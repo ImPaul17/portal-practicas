@@ -9,8 +9,9 @@ Portal web local para registrar las prácticas de empresa entre el **5 de octubr
 3. En posteriores visitas, introduce el mismo usuario y PIN para abrir el portal.
 4. Selecciona un día desde el calendario o desde la lista lateral.
 5. Escribe una tarea por línea en GitLab y/o iPasen.
-6. Selecciona una o varias actividades AF8–AF13.
-7. Añade etiquetas y pulsa **Guardar día**.
+6. Ajusta si hace falta la **hora de inicio y fin** de esa jornada.
+7. Selecciona una o varias actividades AF8–AF13.
+8. Añade etiquetas y pulsa **Guardar día**.
 
 ## Formato automático
 
@@ -42,10 +43,11 @@ El botón **Copiar** genera únicamente una lista:
 ## Calendario
 
 - Periodo: 05/10/2026 → 18/12/2026.
-- Jornada fija: 09:00 → 16:00, 7 horas.
+- Horario predeterminado: 09:00 → 16:00 (7 horas). Se puede cambiar desde **Ajustes → Horario predeterminado**.
+- Cada día también tiene horas de inicio y fin editables. Las jornadas previamente guardadas conservan sus propios horarios; los días nuevos utilizan el predeterminado.
 - Fines de semana excluidos.
 - Festivos excluidos: 12/10, 02/11, 07/12 y 08/12.
-- Total: 51 días laborables / 357 horas.
+- Total: 51 días laborables. Con el horario inicial, 357 horas; el resumen se recalcula al personalizar los horarios.
 
 ## Acciones rápidas
 
@@ -76,6 +78,6 @@ La carpeta [extension](./extension) contiene una extensión local para **Chrome 
 4. Pulsa el icono de la extensión y el botón **Rellenar formulario abierto**.
 5. Revisa los campos; el guardado final se realiza manualmente desde Séneca.
 
-**Horario aplicado:** Presencial · 09:00–16:00 (7 horas). Las AF se seleccionan según el registro, y las anotaciones usan el texto iPasen con formato de lista.
+**Horario aplicado:** Presencial, con la entrada y salida configuradas en cada registro (09:00–16:00 por defecto). La extensión usa las horas de la jornada seleccionada, las AF marcadas y el texto iPasen.
 
 La automatización se apoya en selectores deducidos de las capturas. Se necesita una prueba en una sesión real de Séneca para confirmar que todos los campos se rellenan correctamente. No introduzcas credenciales de Séneca en la extensión.
