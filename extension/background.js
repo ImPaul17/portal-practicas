@@ -11,7 +11,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   try {
     const p = message.payload;
     if (!p || p.version !== 1 || !/^2026-(10|11|12)-\d{2}$/.test(p.date) ||
-        p.modality !== 'Presencial' || p.start !== '09:00' || p.end !== '16:00' ||
+        p.modality !== 'Presencial' ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(p.start) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(p.end) ||
+        Number(p.end.slice(0,2))*60+Number(p.end.slice(3)) <= Number(p.start.slice(0,2))*60+Number(p.start.slice(3)) ||
         !Array.isArray(p.af) || p.af.length < 1 || p.af.length > 6 ||
         !p.af.every(a => CODES.has(a)) || typeof p.notes !== 'string' ||
         !p.notes.trim() || p.notes.length > 20000) {
@@ -19,7 +22,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     const payload = {
-      version:1, date:p.date, modality:'Presencial', start:'09:00', end:'16:00',
+      version:1, date:p.date, modality:'Presencial', start:p.start, end:p.end,
       af:[...new Set(p.af)], notes:p.notes, receivedAt:Date.now()
     };
     // Almacenamiento efímero, nunca a GitHub ni a servidores de terceros.
