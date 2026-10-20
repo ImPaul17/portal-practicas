@@ -21,6 +21,50 @@ const MONTHS_CAP = MONTHS.map(x => x[0].toUpperCase() + x.slice(1));
 const WEEK = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const STORAGE_KEY = 'phonegest_practices_2026';
 const SETTINGS_KEY = 'phonegest_practices_settings_2026';
+const DEFAULT_START = '09:00';
+const DEFAULT_END = '16:00';
+
+function timeMinutes(value){
+  if (typeof value !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return null;
+  const [hour, minute] = value.split(':').map(Number);
+  return hour * 60 + minute;
+}
+function durationMinutes(start,end){
+  const a=timeMinutes(start), b=timeMinutes(end);
+  return a===null || b===null || b<=a ? null : b-a;
+}
+function formatDuration(minutes){
+  const h=Math.floor(minutes/60), m=minutes%60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+function defaultSchedule(){
+  const start=settings.defaultStart || DEFAULT_START, end=settings.defaultEnd || DEFAULT_END;
+  return durationMinutes(start,end)===null
+    ? {start:DEFAULT_START,end:DEFAULT_END}
+    : {start,end};
+}
+function daySchedule(key){
+  const record=records[key];
+  if (record && durationMinutes(record.start,record.end)!==null)
+    return {start:record.start,end:record.end};
+  return defaultSchedule();
+}
+function updateDayShiftPreview(){
+  const start=$('dayStart').value, end=$('dayEnd').value;
+  const minutes=durationMinutes(start,end), valid=minutes!==null;
+  $('dayShiftError').hidden=valid;
+  $('dayStart').setCustomValidity(valid?'':'Revisa el horario.');
+  $('dayEnd').setCustomValidity(valid?'':'La hora de fin debe ser posterior al inicio.');
+  if (valid){
+    $('dayHours').textContent=formatDuration(minutes);
+    $('drawerTime').textContent=`${start} — ${end}`;
+    if(selectedDate) $('drawerWeekday').textContent=`${WEEK[parseDate(selectedDate).getDay()].toUpperCase()} · ${formatDuration(minutes).toUpperCase()}`;
+  } else {
+    $('dayHours').textContent='Horario no válido';
+    $('drawerTime').textContent='Comprueba las horas';
+  }
+  return valid;
+}
 
 const $ = id => document.getElementById(id);
 const app = document.querySelector('.app');
@@ -45,8 +89,8 @@ function loadRecords(){
 }
 function loadSettings(){
   try {
-    return Object.assign({ studentName:'Pablo', theme:'cyan', sidebarCollapsed:false }, JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {});
-  } catch { return { studentName:'Pablo', theme:'cyan', sidebarCollapsed:false }; }
+    return Object.assign({ studentName:'Pablo', theme:'cyan', sidebarCollapsed:false, defaultStart:DEFAULT_START, defaultEnd:DEFAULT_END }, JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {});
+  } catch { return { studentName:'Pablo', theme:'cyan', sidebarCollapsed:false, defaultStart:DEFAULT_START, defaultEnd:DEFAULT_END }; }
 }
 function persist(){ PortalAuth.saveRecords(records).catch(error=>{ console.error('Error al guardar:',error); showToast('Error al cifrar/guardar los registros. Exporta una copia.'); }); }
 function persistSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
@@ -106,6 +150,11 @@ function applySettings(){
   document.documentElement.dataset.theme=settings.theme || 'cyan';
   document.querySelectorAll('[data-theme-choice]').forEach(b=>b.classList.toggle('active', b.dataset.themeChoice===settings.theme));
   $('studentName').value=settings.studentName || 'Pablo';
+  const shift=defaultSchedule();
+  $('defaultStart').value=shift.start;
+  $('defaultEnd').value=shift.end;
+  $('defaultShiftSummary').textContent=`${shift.start} — ${shift.end}`;
+  $('defaultShiftHours').textContent=`${formatDuration(durationMinutes(shift.start,shift.end))} · horario habitual`;
   if(settings.sidebarCollapsed) app.classList.add('sidebar-collapsed'); else app.classList.remove('sidebar-collapsed');
 }
 
@@ -163,7 +212,7 @@ function renderRecords(){
   $('recordsList').innerHTML=days.length?days.map(d=>{
     const key=dateKey(d), status=getStatus(key), r=records[key]||{};
     const ip=linesFrom(r.ipasen||'')[0]||'Sin registro iPasen'; const git=linesFrom(r.gitlab||'')[0]||'Sin registro GitLab';
-    return `<div class="record-row"><div class="record-date"><b>${fullDate(d)}</b><small>${WEEK[d.getDay()]} · 09–16h</small><span class="status-text ${status}"><i></i>${statusLabel(status)}</span></div><div class="record-content"><p><b>iPasen</b> · ${escapeHtml(ip)}</p><p><b>GitLab</b> · ${escapeHtml(git)}</p><div class="record-tags">${(r.af||[]).map(a=>`<span class="mini-chip af">${a}</span>`).join('')}${(r.labels||[]).slice(0,3).map(t=>`<span class="mini-chip">#${escapeHtml(t)}</span>`).join('')}</div></div><button class="row-edit" data-edit="${key}" title="Editar">↗</button></div>`;
+    return `<div class="record-row"><div class="record-date"><b>${fullDate(d)}</b><small>${WEEK[d.getDay()]} · ${daySchedule(key).start}–${daySchedule(key).end}</small><span class="status-text ${status}"><i></i>${statusLabel(status)}</span></div><div class="record-content"><p><b>iPasen</b> · ${escapeHtml(ip)}</p><p><b>GitLab</b> · ${escapeHtml(git)}</p><div class="record-tags">${(r.af||[]).map(a=>`<span class="mini-chip af">${a}</span>`).join('')}${(r.labels||[]).slice(0,3).map(t=>`<span class="mini-chip">#${escapeHtml(t)}</span>`).join('')}</div></div><button class="row-edit" data-edit="${key}" title="Editar">↗</button></div>`;
   }).join(''):'<div class="empty-state">No hay resultados.</div>';
   document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openDay(b.dataset.edit)));
 }
@@ -172,7 +221,11 @@ function renderStats(){
   const completed=WORKING_DAYS.filter(d=>getStatus(dateKey(d))==='complete').length;
   const gitCount=WORKING_DAYS.filter(d=>records[dateKey(d)]?.gitlab?.trim()).length;
   $('totalDaysStat').textContent=WORKING_DAYS.length;
-  $('hoursStat').textContent=WORKING_DAYS.length*7;
+  const plannedMinutes=WORKING_DAYS.reduce((total,d)=>{
+    const shift=daySchedule(dateKey(d));
+    return total+durationMinutes(shift.start,shift.end);
+  },0);
+  $('hoursStat').textContent=formatDuration(plannedMinutes);
   $('completedDaysStat').textContent=completed;
   $('gitlabStat').textContent=gitCount;
   $('progressCount').textContent=`${completed} / ${WORKING_DAYS.length}`;
@@ -210,8 +263,11 @@ function openDay(key){
   const d=parseDate(key); if(!isWorkingDay(d)) return;
   hideContextMenu(); closeTheme();
   selectedDate=key; const r=records[key]||{gitlab:'',ipasen:'',af:[],labels:[]};
-  $('drawerWeekday').textContent=`${WEEK[d.getDay()].toUpperCase()} · 7 HORAS`;
   $('drawerDate').textContent=fullDate(d);
+  const shift=daySchedule(key);
+  $('dayStart').value=shift.start;
+  $('dayEnd').value=shift.end;
+  updateDayShiftPreview();
   $('gitlabEntry').value=r.gitlab||''; $('ipasenEntry').value=r.ipasen||'';
   tagsDraft=[...(r.labels||[])]; renderTags(); renderAfOptions(r.af||[]); updatePreviews();
   $('deleteDayBtn').style.visibility=records[key]?'visible':'hidden';
@@ -224,9 +280,12 @@ function closeDay(){
 function saveDay(){
   if(!selectedDate) return;
   const af=[...document.querySelectorAll('#afOptions input:checked')].map(x=>x.value);
+  if (!updateDayShiftPreview()){ showToast('Corrige el horario antes de guardar'); return false; }
+  const start=$('dayStart').value, end=$('dayEnd').value;
+  const minutes=durationMinutes(start,end);
   const gitlab=normalizeInputText($('gitlabEntry').value), ipasen=normalizeInputText($('ipasenEntry').value);
-  records[selectedDate]={gitlab,ipasen,af,labels:[...tagsDraft],updatedAt:new Date().toISOString(),hours:7,start:'09:00',end:'16:00'};
-  persist(); $('gitlabEntry').value=gitlab; $('ipasenEntry').value=ipasen; setDirty(false); $('deleteDayBtn').style.visibility='visible'; refreshAll(); showToast(getStatus(selectedDate)==='complete'?'Día completado':'Guardado en progreso');
+  records[selectedDate]={gitlab,ipasen,af,labels:[...tagsDraft],updatedAt:new Date().toISOString(),hours:Number((minutes/60).toFixed(2)),start,end};
+  persist(); $('gitlabEntry').value=gitlab; $('ipasenEntry').value=ipasen; setDirty(false); $('deleteDayBtn').style.visibility='visible'; refreshAll(); showToast(getStatus(selectedDate)==='complete'?'Día completado':'Guardado en progreso'); return true;
 }
 function sendDayToSeneca(){
   if (!selectedDate) return;
@@ -234,12 +293,14 @@ function sendDayToSeneca(){
   const notes=formatIpasen($('ipasenEntry').value).trim();
   if (!notes) { showToast('Añade las anotaciones de Séneca'); return; }
   if (!af.length) { showToast('Selecciona al menos una actividad AF'); return; }
+  if (!updateDayShiftPreview()){ showToast('Corrige el horario antes de enviar'); return; }
   // Guardar primero el registro de este navegador.
-  if (dirty) saveDay();
+  if (dirty && !saveDay()) return;
+  const start=$('dayStart').value, end=$('dayEnd').value;
   const requestId=window.crypto?.randomUUID?.() || String(Date.now());
   const payload={
     version:1, date:selectedDate, modality:'Presencial',
-    start:'09:00', end:'16:00', af, notes
+    start, end, af, notes
   };
   let replied=false;
   const response=event=>{
@@ -335,14 +396,15 @@ function openTheme(){
   themePopover.classList.toggle('open'); themePopover.setAttribute('aria-hidden',themePopover.classList.contains('open')?'false':'true');
 }
 function closeTheme(){ themePopover.classList.remove('open'); themePopover.setAttribute('aria-hidden','true'); }
-function openSettings(){ closeTheme(); $('studentName').value=settings.studentName||'Pablo'; settingsModal.classList.add('open'); settingsModal.setAttribute('aria-hidden','false'); }
+function openSettings(){ closeTheme(); $('studentName').value=settings.studentName||'Pablo'; const shift=defaultSchedule(); $('defaultStart').value=shift.start; $('defaultEnd').value=shift.end; settingsModal.classList.add('open'); settingsModal.setAttribute('aria-hidden','false'); }
 function closeSettings(){ settingsModal.classList.remove('open'); settingsModal.setAttribute('aria-hidden','true'); }
 function exportJson(){
-  const payload={app:'PhoneGest Portal de Prácticas',version:2,period:{start:'2026-10-05',end:'2026-12-18',schedule:'09:00-16:00',hoursPerDay:7,holidays:Object.keys(HOLIDAYS)},settings:{studentName:settings.studentName,theme:settings.theme},exportedAt:new Date().toISOString(),records};
+  const shift=defaultSchedule();
+  const payload={app:'PhoneGest Portal de Prácticas',version:3,period:{start:'2026-10-05',end:'2026-12-18',defaultSchedule:`${shift.start}-${shift.end}`,holidays:Object.keys(HOLIDAYS)},settings:{studentName:settings.studentName,theme:settings.theme,defaultStart:shift.start,defaultEnd:shift.end},exportedAt:new Date().toISOString(),records};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='phonegest-practicas-2026.json'; a.click(); URL.revokeObjectURL(url); showToast('Copia exportada');
 }
 function importJson(file){
-  const reader=new FileReader(); reader.onload=()=>{ try { const p=JSON.parse(reader.result), incoming=p.records||p; if(!incoming||typeof incoming!=='object') throw new Error(); records=incoming; if(p.settings?.studentName) settings.studentName=p.settings.studentName; if(p.settings?.theme) settings.theme=p.settings.theme; persist(); persistSettings(); applySettings(); refreshAll(); showToast('Datos importados'); } catch { showToast('JSON no válido'); } }; reader.readAsText(file);
+  const reader=new FileReader(); reader.onload=()=>{ try { const p=JSON.parse(reader.result), incoming=p.records||p; if(!incoming||typeof incoming!=='object') throw new Error(); records=incoming; if(p.settings?.studentName) settings.studentName=p.settings.studentName; if(p.settings?.theme) settings.theme=p.settings.theme; if(durationMinutes(p.settings?.defaultStart,p.settings?.defaultEnd)!==null){settings.defaultStart=p.settings.defaultStart;settings.defaultEnd=p.settings.defaultEnd;} persist(); persistSettings(); applySettings(); refreshAll(); showToast('Datos importados'); } catch { showToast('JSON no válido'); } }; reader.readAsText(file);
 }
 let toastTimer; function showToast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1800); }
 
@@ -364,6 +426,10 @@ document.querySelectorAll('.nav-button[data-view]').forEach(b=>b.addEventListene
 document.querySelectorAll('[data-close-drawer]').forEach(b=>b.addEventListener('click',closeDay));
 $('senecaSendBtn').addEventListener('click',sendDayToSeneca);
 $('saveDayBtn').addEventListener('click',saveDay); $('deleteDayBtn').addEventListener('click',deleteDay);
+['dayStart','dayEnd'].forEach(id=>$(id).addEventListener('input',()=>{
+  updateDayShiftPreview();
+  setDirty();
+}));
 ['gitlabEntry','ipasenEntry'].forEach(id=>$(id).addEventListener('input',()=>setDirty()));
 document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>{ const type=b.dataset.copy; if(!selectedDate)return; writeClipboard(type==='gitlab'?formatGitlab(selectedDate,$('gitlabEntry').value):formatIpasen($('ipasenEntry').value),type==='gitlab'?'GitLab copiado':'iPasen copiado'); }));
 document.querySelectorAll('[data-paste]').forEach(b=>b.addEventListener('click',()=>readClipboardInto(b.dataset.paste)));
@@ -374,7 +440,19 @@ $('searchInput').addEventListener('input',renderRecords); $('statusFilter').addE
 $('themeButton').addEventListener('click',e=>{e.stopPropagation();openTheme();});
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>{ settings.theme=b.dataset.themeChoice; persistSettings(); applySettings(); closeTheme(); }));
 $('settingsButton').addEventListener('click',openSettings); document.querySelectorAll('[data-close-settings]').forEach(b=>b.addEventListener('click',closeSettings));
-$('saveSettingsBtn').addEventListener('click',()=>{ settings.studentName=$('studentName').value.trim()||'Pablo'; persistSettings(); closeSettings(); if(selectedDate) updatePreviews(); showToast('Ajustes guardados'); });
+$('saveSettingsBtn').addEventListener('click',()=>{
+  const start=$('defaultStart').value, end=$('defaultEnd').value;
+  if (durationMinutes(start,end)===null) { showToast('El horario predeterminado no es válido'); return; }
+  settings.studentName=$('studentName').value.trim()||'Pablo';
+  settings.defaultStart=start;
+  settings.defaultEnd=end;
+  persistSettings();
+  applySettings();
+  closeSettings();
+  refreshAll();
+  if(selectedDate) updatePreviews();
+  showToast('Ajustes guardados');
+});
 $('exportBtn').addEventListener('click',exportJson); $('importInput').addEventListener('change',e=>{ const f=e.target.files[0]; if(f)importJson(f); e.target.value=''; });
 document.querySelectorAll('[data-context-action]').forEach(b=>b.addEventListener('click',()=>contextAction(b.dataset.contextAction)));
 document.addEventListener('click',e=>{ if(!contextMenu.contains(e.target)) hideContextMenu(); if(!themePopover.contains(e.target)&&!$('themeButton').contains(e.target)) closeTheme(); });
