@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PhoneGest → Séneca</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <div class="heading"><span class="logo">P</span><div><strong>PhoneGest → Séneca</strong><small>Registro diario</small></div></div>
+    <div id="empty" class="empty" hidden>
+      <h2>Sin registro pendiente</h2>
+      <p>Abre tu portal de prácticas, entra en un día y pulsa <b>Enviar a Séneca</b>.</p>
+      <button id="openPortal" class="secondary">Abrir portal</button>
+    </div>
+    <section id="pending" hidden>
+      <div class="meta"><span>REGISTRO PENDIENTE</span><b id="date">—</b></div>
+      <div class="summary"><div><small>Asistencia</small><strong>Presencial · 09:00–16:00</strong></div><div><small>Actividades formativas</small><strong id="af">—</strong></div></div>
+      <p id="notes" class="notes"></p>
+      <button class="primary" id="fill">Rellenar formulario abierto</button>
+      <button class="secondary" id="openSeneca">Abrir Séneca</button>
+      <p class="hint">Primero inicia sesión y abre el detalle de la jornada que corresponda en Séneca. No se realiza el guardado automático.</p>
+    </section>
+    <div id="result" role="status" aria-live="polite"></div>
+  </main>
+  <script src="fill-form.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
