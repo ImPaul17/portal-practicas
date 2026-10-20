@@ -36,7 +36,7 @@ let contextDate = null;
 let tagsDraft = [];
 let dirty = false;
 let monthState = {9:true,10:true,11:true};
-let records = loadRecords();
+let records = {};
 let settings = loadSettings();
 
 function loadRecords(){
@@ -48,7 +48,7 @@ function loadSettings(){
     return Object.assign({ studentName:'Pablo', theme:'cyan', sidebarCollapsed:false }, JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {});
   } catch { return { studentName:'Pablo', theme:'cyan', sidebarCollapsed:false }; }
 }
-function persist(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+function persist(){ PortalAuth.saveRecords(records).catch(error=>{ console.error('Error al guardar:',error); showToast('Error al cifrar/guardar los registros. Exporta una copia.'); }); }
 function persistSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
 function dateKey(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -163,7 +163,7 @@ function renderRecords(){
   $('recordsList').innerHTML=days.length?days.map(d=>{
     const key=dateKey(d), status=getStatus(key), r=records[key]||{};
     const ip=linesFrom(r.ipasen||'')[0]||'Sin registro iPasen'; const git=linesFrom(r.gitlab||'')[0]||'Sin registro GitLab';
-    return `<div class="record-row"><div class="record-date"><b>${fullDate(d)}</b><small>${WEEK[d.getDay()]} · 09–15h</small><span class="status-text ${status}"><i></i>${statusLabel(status)}</span></div><div class="record-content"><p><b>iPasen</b> · ${escapeHtml(ip)}</p><p><b>GitLab</b> · ${escapeHtml(git)}</p><div class="record-tags">${(r.af||[]).map(a=>`<span class="mini-chip af">${a}</span>`).join('')}${(r.labels||[]).slice(0,3).map(t=>`<span class="mini-chip">#${escapeHtml(t)}</span>`).join('')}</div></div><button class="row-edit" data-edit="${key}" title="Editar">↗</button></div>`;
+    return `<div class="record-row"><div class="record-date"><b>${fullDate(d)}</b><small>${WEEK[d.getDay()]} · 09–16h</small><span class="status-text ${status}"><i></i>${statusLabel(status)}</span></div><div class="record-content"><p><b>iPasen</b> · ${escapeHtml(ip)}</p><p><b>GitLab</b> · ${escapeHtml(git)}</p><div class="record-tags">${(r.af||[]).map(a=>`<span class="mini-chip af">${a}</span>`).join('')}${(r.labels||[]).slice(0,3).map(t=>`<span class="mini-chip">#${escapeHtml(t)}</span>`).join('')}</div></div><button class="row-edit" data-edit="${key}" title="Editar">↗</button></div>`;
   }).join(''):'<div class="empty-state">No hay resultados.</div>';
   document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openDay(b.dataset.edit)));
 }
@@ -172,7 +172,7 @@ function renderStats(){
   const completed=WORKING_DAYS.filter(d=>getStatus(dateKey(d))==='complete').length;
   const gitCount=WORKING_DAYS.filter(d=>records[dateKey(d)]?.gitlab?.trim()).length;
   $('totalDaysStat').textContent=WORKING_DAYS.length;
-  $('hoursStat').textContent=WORKING_DAYS.length*6;
+  $('hoursStat').textContent=WORKING_DAYS.length*7;
   $('completedDaysStat').textContent=completed;
   $('gitlabStat').textContent=gitCount;
   $('progressCount').textContent=`${completed} / ${WORKING_DAYS.length}`;
@@ -210,7 +210,7 @@ function openDay(key){
   const d=parseDate(key); if(!isWorkingDay(d)) return;
   hideContextMenu(); closeTheme();
   selectedDate=key; const r=records[key]||{gitlab:'',ipasen:'',af:[],labels:[]};
-  $('drawerWeekday').textContent=`${WEEK[d.getDay()].toUpperCase()} · 6 HORAS`;
+  $('drawerWeekday').textContent=`${WEEK[d.getDay()].toUpperCase()} · 7 HORAS`;
   $('drawerDate').textContent=fullDate(d);
   $('gitlabEntry').value=r.gitlab||''; $('ipasenEntry').value=r.ipasen||'';
   tagsDraft=[...(r.labels||[])]; renderTags(); renderAfOptions(r.af||[]); updatePreviews();
@@ -225,7 +225,7 @@ function saveDay(){
   if(!selectedDate) return;
   const af=[...document.querySelectorAll('#afOptions input:checked')].map(x=>x.value);
   const gitlab=normalizeInputText($('gitlabEntry').value), ipasen=normalizeInputText($('ipasenEntry').value);
-  records[selectedDate]={gitlab,ipasen,af,labels:[...tagsDraft],updatedAt:new Date().toISOString(),hours:6,start:'09:00',end:'15:00'};
+  records[selectedDate]={gitlab,ipasen,af,labels:[...tagsDraft],updatedAt:new Date().toISOString(),hours:7,start:'09:00',end:'16:00'};
   persist(); $('gitlabEntry').value=gitlab; $('ipasenEntry').value=ipasen; setDirty(false); $('deleteDayBtn').style.visibility='visible'; refreshAll(); showToast(getStatus(selectedDate)==='complete'?'Día completado':'Guardado en progreso');
 }
 function deleteDay(){
@@ -303,7 +303,7 @@ function closeTheme(){ themePopover.classList.remove('open'); themePopover.setAt
 function openSettings(){ closeTheme(); $('studentName').value=settings.studentName||'Pablo'; settingsModal.classList.add('open'); settingsModal.setAttribute('aria-hidden','false'); }
 function closeSettings(){ settingsModal.classList.remove('open'); settingsModal.setAttribute('aria-hidden','true'); }
 function exportJson(){
-  const payload={app:'PhoneGest Portal de Prácticas',version:2,period:{start:'2026-10-05',end:'2026-12-18',schedule:'09:00-15:00',hoursPerDay:6,holidays:Object.keys(HOLIDAYS)},settings:{studentName:settings.studentName,theme:settings.theme},exportedAt:new Date().toISOString(),records};
+  const payload={app:'PhoneGest Portal de Prácticas',version:2,period:{start:'2026-10-05',end:'2026-12-18',schedule:'09:00-16:00',hoursPerDay:7,holidays:Object.keys(HOLIDAYS)},settings:{studentName:settings.studentName,theme:settings.theme},exportedAt:new Date().toISOString(),records};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='phonegest-practicas-2026.json'; a.click(); URL.revokeObjectURL(url); showToast('Copia exportada');
 }
 function importJson(file){
@@ -312,7 +312,12 @@ function importJson(file){
 let toastTimer; function showToast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1800); }
 
 // Events
-applySettings(); refreshAll();
+PortalAuth.start(restoredRecords => {
+  records = restoredRecords;
+  applySettings();
+  refreshAll();
+});
+$('logoutBtn').addEventListener('click', () => PortalAuth.lock());
 $('prevMonth').addEventListener('click',()=>{ if(currentMonth>9){currentMonth--;renderCalendar();} });
 $('nextMonth').addEventListener('click',()=>{ if(currentMonth<11){currentMonth++;renderCalendar();} });
 $('todayButton').addEventListener('click',gotoToday);
