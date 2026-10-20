@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "PhoneGest → Séneca",
+  "description": "Traspasa registros del Portal de Prácticas al formulario de Séneca con revisión manual.",
+  "version": "0.1.0",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://impaul17.github.io/*",
+    "https://seneca.juntadeandalucia.es/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "PhoneGest → Séneca",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://impaul17.github.io/portal-practicas/*"
+      ],
+      "js": [
+        "portal-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
