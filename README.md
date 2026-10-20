@@ -65,3 +65,17 @@ Los registros antiguos sin cifrar del mismo origen web se migran tras crear el a
 El usuario y PIN deben configurarse en cada navegador por separado. Si pierdes el PIN no hay recuperación automática de los registros cifrados: guarda copias JSON en un lugar seguro. El formulario está accesible en GitHub Pages con HTTPS.
 
 No requiere servidor ni base de datos para funcionar.
+
+## Transferencia a Séneca
+
+La carpeta [extension](./extension) contiene una extensión local para **Chrome y Edge** que transfiere un registro del portal al formulario de actividad diaria del alumnado en Séneca.
+
+1. Instala la extensión siguiendo las [instrucciones](./extension/README.md).
+2. Abre el día en el portal y pulsa **Enviar a Séneca**.
+3. Entra en Séneca y abre el detalle de la **misma fecha**.
+4. Pulsa el icono de la extensión y el botón **Rellenar formulario abierto**.
+5. Revisa los campos; el guardado final se realiza manualmente desde Séneca.
+
+**Horario aplicado:** Presencial · 09:00–16:00 (7 horas). Las AF se seleccionan según el registro, y las anotaciones usan el texto iPasen con formato de lista.
+
+La automatización se apoya en selectores deducidos de las capturas. Se necesita una prueba en una sesión real de Séneca para confirmar que todos los campos se rellenan correctamente. No introduzcas credenciales de Séneca en la extensión.
