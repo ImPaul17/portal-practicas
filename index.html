@@ -6,9 +6,25 @@
   <meta name="theme-color" content="#090d14">
   <title>PhoneGest · Prácticas</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
 </head>
 <body>
-  <div class="app">
+  <section class="auth-screen" id="authScreen" aria-label="Acceso al portal">
+    <div class="auth-card">
+      <div class="auth-mark">P</div>
+      <h1 id="authTitle">Acceso al portal</h1>
+      <p id="authHint">Introduce tus datos para continuar.</p>
+      <form class="auth-form" id="authForm">
+        <label class="auth-field">Usuario<input id="authUser" autocomplete="username" required minlength="3" maxlength="32" spellcheck="false"></label>
+        <label class="auth-field">PIN<input id="authPin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="current-password" required></label>
+        <label class="auth-field" id="authConfirmWrap" hidden>Repetir PIN<input id="authConfirmPin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password"></label>
+        <div class="auth-error" id="authError" role="alert" hidden></div>
+        <button class="auth-submit" id="authSubmit" type="submit">Entrar</button>
+      </form>
+      <p class="auth-foot">Acceso local · Los registros se cifran en este navegador. Guarda una copia JSON para recuperarlos.</p>
+    </div>
+  </section>
+  <div class="app" hidden>
     <aside class="sidebar" id="sidebar">
       <div class="brand-row">
         <button class="brand" id="brandHome" aria-label="Ir al calendario">
@@ -198,6 +214,7 @@
         <label class="button subtle file-button">Importar JSON<input type="file" id="importInput" accept="application/json" hidden></label>
       </div>
       <button class="button primary full" id="saveSettingsBtn">Guardar ajustes</button>
+      <button class="auth-logout" type="button" id="logoutBtn">Cerrar sesión</button>
     </section>
   </div>
 
@@ -211,6 +228,7 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
+  <script src="auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
