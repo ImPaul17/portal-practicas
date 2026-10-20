@@ -22,6 +22,7 @@ async function initialize() {
   if (!pending) return;
   $('date').textContent=dateEs(pending.date);
   $('af').textContent=pending.af.join(', ');
+  $('hours').textContent=`Presencial · ${pending.start}–${pending.end}`;
   $('notes').textContent=pending.notes.slice(0,330)+(pending.notes.length>330?'…':'');
 }
 $('fill').addEventListener('click',async()=>{
