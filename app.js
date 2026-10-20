@@ -228,6 +228,41 @@ function saveDay(){
   records[selectedDate]={gitlab,ipasen,af,labels:[...tagsDraft],updatedAt:new Date().toISOString(),hours:7,start:'09:00',end:'16:00'};
   persist(); $('gitlabEntry').value=gitlab; $('ipasenEntry').value=ipasen; setDirty(false); $('deleteDayBtn').style.visibility='visible'; refreshAll(); showToast(getStatus(selectedDate)==='complete'?'Día completado':'Guardado en progreso');
 }
+function sendDayToSeneca(){
+  if (!selectedDate) return;
+  const af=[...document.querySelectorAll('#afOptions input:checked')].map(input=>input.value);
+  const notes=formatIpasen($('ipasenEntry').value).trim();
+  if (!notes) { showToast('Añade las anotaciones de Séneca'); return; }
+  if (!af.length) { showToast('Selecciona al menos una actividad AF'); return; }
+  // Guardar primero el registro de este navegador.
+  if (dirty) saveDay();
+  const requestId=window.crypto?.randomUUID?.() || String(Date.now());
+  const payload={
+    version:1, date:selectedDate, modality:'Presencial',
+    start:'09:00', end:'16:00', af, notes
+  };
+  let replied=false;
+  const response=event=>{
+    if(event.source!==window || event.origin!==window.location.origin ||
+       event.data?.source!=='PhoneGestExtension' ||
+       event.data?.type!=='SENECA_TRANSFER_RESULT' ||
+       event.data.requestId!==requestId) return;
+    replied=true;
+    window.removeEventListener('message',response);
+    clearTimeout(timer);
+    showToast(event.data.ok
+      ? 'Enviado a la extensión. Abre Séneca y pulsa el icono PhoneGest → Séneca.'
+      : 'Error en la extensión: '+(event.data.error||'desconocido'));
+  };
+  window.addEventListener('message',response);
+  const timer=setTimeout(()=>{
+    if(replied) return;
+    window.removeEventListener('message',response);
+    showToast('Instala/activa la extensión PhoneGest → Séneca desde la carpeta extension.');
+  },2500);
+  window.postMessage({source:'PhoneGestPortal',type:'SEND_SENECA',requestId,payload},window.location.origin);
+}
+
 function deleteDay(){
   if(!selectedDate || !records[selectedDate]) return;
   if(!confirm(`¿Vaciar el registro del ${fullDate(parseDate(selectedDate))}?`)) return;
@@ -327,6 +362,7 @@ $('sidebarToggle').addEventListener('click',()=>{ settings.sidebarCollapsed=!app
 $('collapseMonthsBtn').addEventListener('click',()=>{ const anyOpen=Object.values(monthState).some(Boolean); monthState={9:!anyOpen,10:!anyOpen,11:!anyOpen}; $('collapseMonthsBtn').textContent=anyOpen?'+':'−'; renderDayTree(); });
 document.querySelectorAll('.nav-button[data-view]').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.view)));
 document.querySelectorAll('[data-close-drawer]').forEach(b=>b.addEventListener('click',closeDay));
+$('senecaSendBtn').addEventListener('click',sendDayToSeneca);
 $('saveDayBtn').addEventListener('click',saveDay); $('deleteDayBtn').addEventListener('click',deleteDay);
 ['gitlabEntry','ipasenEntry'].forEach(id=>$(id).addEventListener('input',()=>setDirty()));
 document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>{ const type=b.dataset.copy; if(!selectedDate)return; writeClipboard(type==='gitlab'?formatGitlab(selectedDate,$('gitlabEntry').value):formatIpasen($('ipasenEntry').value),type==='gitlab'?'GitLab copiado':'iPasen copiado'); }));
