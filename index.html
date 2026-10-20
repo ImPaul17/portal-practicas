@@ -34,9 +34,9 @@
         <button class="icon-button sidebar-toggle" id="sidebarToggle" title="Contraer menú" aria-label="Contraer menú">‹</button>
       </div>
 
-      <div class="shift-card" title="Horario fijo de prácticas">
+      <div class="shift-card" title="Horario predeterminado de prácticas">
         <span class="status-live"></span>
-        <div><b>09:00 — 16:00</b><small>7 h · jornada diaria</small></div>
+        <div><b id="defaultShiftSummary">09:00 — 16:00</b><small id="defaultShiftHours">7 h · horario habitual</small></div>
       </div>
 
       <nav class="primary-nav" aria-label="Navegación principal">
@@ -114,7 +114,7 @@
       <section class="view" id="statsView">
         <div class="metric-grid">
           <article class="metric"><small>DÍAS</small><b id="totalDaysStat">51</b><span>laborables</span></article>
-          <article class="metric"><small>HORAS</small><b id="hoursStat">306</b><span>planificadas</span></article>
+          <article class="metric"><small>HORAS</small><b id="hoursStat">357</b><span>planificadas</span></article>
           <article class="metric"><small>COMPLETADOS</small><b id="completedDaysStat">0</b><span>iPasen + AF</span></article>
           <article class="metric"><small>GITLAB</small><b id="gitlabStat">0</b><span>con registro</span></article>
         </div>
@@ -131,14 +131,22 @@
     <aside class="day-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerDate">
       <header class="drawer-header">
         <div>
-          <small id="drawerWeekday">LUNES · 6 HORAS</small>
+          <small id="drawerWeekday">LUNES · 7 HORAS</small>
           <h2 id="drawerDate">5 de octubre</h2>
-          <span class="drawer-time">09:00 — 16:00</span>
+          <span class="drawer-time" id="drawerTime">09:00 — 16:00</span>
         </div>
         <button class="icon-button" data-close-drawer aria-label="Cerrar">×</button>
       </header>
 
       <div class="drawer-scroll">
+        <section class="editor-block compact-block">
+          <div class="editor-title"><div><b>Horario de esta jornada</b><small>modificable</small></div><small id="dayHours" class="shift-duration">7 h</small></div>
+          <div class="shift-editor">
+            <label>Hora de inicio<input id="dayStart" type="time" value="09:00" step="60" required></label>
+            <label>Hora de fin<input id="dayEnd" type="time" value="16:00" step="60" required></label>
+          </div>
+          <p id="dayShiftError" class="shift-error" hidden>La hora de fin debe ser posterior a la de inicio.</p>
+        </section>
         <section class="editor-block">
           <div class="editor-title">
             <div><span class="service-dot gitlab"></span><b>GitLab</b><small>opcional</small></div>
@@ -210,6 +218,13 @@
     <section class="settings-card" role="dialog" aria-modal="true">
       <div class="settings-head"><div><small>AJUSTES</small><h2>Portal</h2></div><button class="icon-button" data-close-settings>×</button></div>
       <label class="setting-field"><span>Nombre para GitLab</span><input id="studentName" maxlength="50" placeholder="Pablo"></label>
+      <div class="settings-shift">
+        <div class="settings-shift-heading"><b>Horario predeterminado</b><small>Se aplica a los días nuevos; no modifica jornadas guardadas.</small></div>
+        <div class="shift-editor">
+          <label>Hora de inicio<input id="defaultStart" type="time" value="09:00" step="60" required></label>
+          <label>Hora de fin<input id="defaultEnd" type="time" value="16:00" step="60" required></label>
+        </div>
+      </div>
       <div class="settings-actions">
         <button class="button subtle" id="exportBtn">Exportar JSON</button>
         <label class="button subtle file-button">Importar JSON<input type="file" id="importInput" accept="application/json" hidden></label>
