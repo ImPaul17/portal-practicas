@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es" data-theme="cyan">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d14">
+  <title>PhoneGest · Prácticas</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-row">
+        <button class="brand" id="brandHome" aria-label="Ir al calendario">
+          <span class="brand-logo">P</span>
+          <span class="brand-copy"><b>PhoneGest</b><small>Prácticas</small></span>
+        </button>
+        <button class="icon-button sidebar-toggle" id="sidebarToggle" title="Contraer menú" aria-label="Contraer menú">‹</button>
+      </div>
+
+      <div class="shift-card" title="Horario fijo de prácticas">
+        <span class="status-live"></span>
+        <div><b>09:00 — 15:00</b><small>6 h · jornada diaria</small></div>
+      </div>
+
+      <nav class="primary-nav" aria-label="Navegación principal">
+        <button class="nav-button active" data-view="calendarView"><span class="nav-icon">▦</span><span>Calendario</span></button>
+        <button class="nav-button" data-view="recordsView"><span class="nav-icon">≡</span><span>Registros</span></button>
+        <button class="nav-button" data-view="statsView"><span class="nav-icon">◒</span><span>Resumen</span></button>
+      </nav>
+
+      <div class="days-head">
+        <span>DÍAS</span>
+        <button class="tiny-button" id="collapseMonthsBtn" title="Cerrar/abrir meses">−</button>
+      </div>
+      <div class="day-tree" id="dayTree"></div>
+
+      <div class="sidebar-bottom">
+        <button class="nav-button" id="themeButton"><span class="nav-icon">◐</span><span>Tema</span></button>
+        <button class="nav-button" id="settingsButton"><span class="nav-icon">⚙</span><span>Ajustes</span></button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <p id="viewEyebrow">FORMACIÓN EN EMPRESA</p>
+          <h1 id="viewTitle">Calendario</h1>
+        </div>
+        <div class="topbar-actions">
+          <div class="progress-pill" title="Días completados">
+            <span id="progressRing" class="mini-ring"><i></i></span>
+            <div><b id="progressCount">0 / 51</b><small>completados</small></div>
+          </div>
+          <button class="button subtle" id="todayButton">Hoy</button>
+          <button class="button primary" id="newDayButton">+ Registrar día</button>
+        </div>
+      </header>
+
+      <section class="view active" id="calendarView">
+        <div class="calendar-toolbar">
+          <div class="month-switcher">
+            <button class="icon-button" id="prevMonth" aria-label="Mes anterior">‹</button>
+            <button class="month-label" id="monthLabel">Octubre 2026</button>
+            <button class="icon-button" id="nextMonth" aria-label="Mes siguiente">›</button>
+          </div>
+          <div class="legend-inline">
+            <span><i class="legend-dot done"></i>Hecho</span>
+            <span><i class="legend-dot started"></i>En curso</span>
+            <span><i class="legend-dot pending"></i>Pendiente</span>
+          </div>
+        </div>
+
+        <div class="calendar-shell">
+          <div class="week-head"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <div class="hint-row">
+          <span><kbd>Click</kbd> abrir día</span>
+          <span><kbd>Click derecho</kbd> acciones rápidas</span>
+        </div>
+      </section>
+
+      <section class="view" id="recordsView">
+        <div class="section-toolbar">
+          <div class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Buscar registros, etiquetas o AF…"></div>
+          <select id="statusFilter" class="select-control">
+            <option value="all">Todos</option>
+            <option value="complete">Completados</option>
+            <option value="partial">En curso</option>
+            <option value="empty">Pendientes</option>
+          </select>
+        </div>
+        <div class="records-list" id="recordsList"></div>
+      </section>
+
+      <section class="view" id="statsView">
+        <div class="metric-grid">
+          <article class="metric"><small>DÍAS</small><b id="totalDaysStat">51</b><span>laborables</span></article>
+          <article class="metric"><small>HORAS</small><b id="hoursStat">306</b><span>planificadas</span></article>
+          <article class="metric"><small>COMPLETADOS</small><b id="completedDaysStat">0</b><span>iPasen + AF</span></article>
+          <article class="metric"><small>GITLAB</small><b id="gitlabStat">0</b><span>con registro</span></article>
+        </div>
+        <div class="stats-panel">
+          <div class="panel-head"><div><small>ACTIVIDADES FORMATIVAS</small><h2>Cobertura AF</h2></div><span class="muted">AF8 — AF13</span></div>
+          <div id="afStats" class="af-stats"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer-layer" id="dayDrawer" aria-hidden="true">
+    <button class="drawer-backdrop" data-close-drawer aria-label="Cerrar"></button>
+    <aside class="day-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerDate">
+      <header class="drawer-header">
+        <div>
+          <small id="drawerWeekday">LUNES · 6 HORAS</small>
+          <h2 id="drawerDate">5 de octubre</h2>
+          <span class="drawer-time">09:00 — 15:00</span>
+        </div>
+        <button class="icon-button" data-close-drawer aria-label="Cerrar">×</button>
+      </header>
+
+      <div class="drawer-scroll">
+        <section class="editor-block">
+          <div class="editor-title">
+            <div><span class="service-dot gitlab"></span><b>GitLab</b><small>opcional</small></div>
+            <div class="inline-actions">
+              <button class="mini-action" data-paste="gitlab" title="Pegar desde portapapeles">Pegar</button>
+              <button class="mini-action accent" data-copy="gitlab">Copiar</button>
+            </div>
+          </div>
+          <textarea id="gitlabEntry" rows="7" placeholder="Una tarea por línea. No hace falta escribir guiones.\n\nEjemplo:\nFinalización del sistema de feedback…\nVerificación y pruebas…"></textarea>
+          <div class="format-preview">
+            <button class="preview-head" data-toggle-preview="gitlab"><span>Vista previa</span><span>⌄</span></button>
+            <pre id="gitlabPreview"></pre>
+          </div>
+        </section>
+
+        <section class="editor-block">
+          <div class="editor-title">
+            <div><span class="service-dot ipasen"></span><b>iPasen</b><small>obligatorio</small></div>
+            <div class="inline-actions">
+              <button class="mini-action" data-paste="ipasen" title="Pegar desde portapapeles">Pegar</button>
+              <button class="mini-action accent" data-copy="ipasen">Copiar</button>
+            </div>
+          </div>
+          <textarea id="ipasenEntry" rows="6" placeholder="Una actividad por línea. El portal añadirá automáticamente cada «-». "></textarea>
+          <div class="format-preview">
+            <button class="preview-head" data-toggle-preview="ipasen"><span>Vista previa</span><span>⌄</span></button>
+            <pre id="ipasenPreview"></pre>
+          </div>
+        </section>
+
+        <section class="editor-block compact-block">
+          <div class="editor-title"><div><b>Actividades AF</b><small>selecciona una o varias</small></div></div>
+          <div id="afOptions" class="af-options"></div>
+        </section>
+
+        <section class="editor-block compact-block">
+          <div class="editor-title"><div><b>Etiquetas</b><small>Enter para añadir</small></div></div>
+          <div class="tag-editor" id="tagEditor">
+            <div id="tagChips" class="tag-chips"></div>
+            <input id="tagInput" placeholder="PHP, IA, soporte…" autocomplete="off">
+          </div>
+        </section>
+      </div>
+
+      <footer class="drawer-footer">
+        <button class="button danger-ghost" id="deleteDayBtn">Eliminar</button>
+        <div>
+          <span id="saveState" class="save-state">Sin cambios</span>
+          <button class="button primary" id="saveDayBtn">Guardar día</button>
+        </div>
+      </footer>
+    </aside>
+  </div>
+
+  <div class="popover" id="themePopover" aria-hidden="true">
+    <div class="popover-title">Color de acento</div>
+    <div class="theme-grid">
+      <button data-theme-choice="cyan" class="theme-swatch cyan" title="Cian"></button>
+      <button data-theme-choice="violet" class="theme-swatch violet" title="Violeta"></button>
+      <button data-theme-choice="emerald" class="theme-swatch emerald" title="Esmeralda"></button>
+      <button data-theme-choice="amber" class="theme-swatch amber" title="Ámbar"></button>
+      <button data-theme-choice="rose" class="theme-swatch rose" title="Rosa"></button>
+    </div>
+  </div>
+
+  <div class="modal-layer" id="settingsModal" aria-hidden="true">
+    <button class="modal-backdrop" data-close-settings aria-label="Cerrar"></button>
+    <section class="settings-card" role="dialog" aria-modal="true">
+      <div class="settings-head"><div><small>AJUSTES</small><h2>Portal</h2></div><button class="icon-button" data-close-settings>×</button></div>
+      <label class="setting-field"><span>Nombre para GitLab</span><input id="studentName" maxlength="50" placeholder="Pablo"></label>
+      <div class="settings-actions">
+        <button class="button subtle" id="exportBtn">Exportar JSON</button>
+        <label class="button subtle file-button">Importar JSON<input type="file" id="importInput" accept="application/json" hidden></label>
+      </div>
+      <button class="button primary full" id="saveSettingsBtn">Guardar ajustes</button>
+    </section>
+  </div>
+
+  <div class="context-menu" id="contextMenu" aria-hidden="true">
+    <button data-context-action="open"><span>↗</span>Abrir día</button>
+    <button data-context-action="copy-gitlab"><span>▣</span>Copiar GitLab</button>
+    <button data-context-action="copy-ipasen"><span>▤</span>Copiar iPasen</button>
+    <button data-context-action="duplicate-prev"><span>⧉</span>Copiar día anterior</button>
+    <div class="menu-sep"></div>
+    <button data-context-action="clear" class="danger-menu"><span>×</span>Vaciar día</button>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
