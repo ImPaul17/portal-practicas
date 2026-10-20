@@ -324,3 +324,8 @@ textarea::placeholder { color:#3e495a; }
   .af-options { grid-template-columns:1fr; }
   .settings-actions { grid-template-columns:1fr; }
 }
+
+/* Transferencia asistida Séneca */
+#senecaSendBtn{border-color:rgba(var(--accent-rgb),.30);color:var(--accent)}
+#senecaSendBtn:hover{background:rgba(var(--accent-rgb),.08)}
+@media(max-width:560px){.drawer-footer{gap:8px}.drawer-footer>div{flex-wrap:wrap;justify-content:flex-end}.drawer-footer #saveState{width:100%;text-align:right}#senecaSendBtn{font-size:10px;padding:0 8px}}
