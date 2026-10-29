@@ -20,6 +20,10 @@ const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 
 const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const STORAGE_KEY = 'phonegest_practicas_react_v1';
 const OLD_STORAGE_KEY = 'phonegest_practices_2026';
+const VAULT_KEY = 'phonegest_practices_vault_2026';
+const SETTINGS_KEY = 'phonegest_practices_settings_2026';
+const VAULT_ITERATIONS = 350000;
+let vaultWrites = Promise.resolve();
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -72,20 +76,79 @@ function statusOf(record) {
 function statusLabel(status) {
   return { empty: 'Sin abrir', draft: 'Borrador', progress: 'En curso', closed: 'Cerrado' }[status] || 'Sin abrir';
 }
+
+function readJson(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function readVault() {
+  const vault = readJson(VAULT_KEY);
+  if (!vault || vault.version !== 1 || !vault.username || !vault.salt || !vault.iv || !vault.encrypted) return null;
+  return vault;
+}
+function normalizeRecords(source = {}) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+  return Object.fromEntries(Object.entries(source).map(([key, value = {}]) => [key, {
+    gitlab: value.gitlab || '',
+    notes: value.notes || value.ipasen || '',
+    af: Array.isArray(value.af) ? value.af : [],
+    tags: Array.isArray(value.tags) ? value.tags : (Array.isArray(value.labels) ? value.labels : []),
+    start: value.start || '09:00',
+    end: value.end || '16:00',
+    closed: Boolean(value.closed),
+    createdAt: value.createdAt || value.updatedAt || undefined,
+  }]));
+}
+function loadSettings() {
+  const saved = readJson(SETTINGS_KEY) || {};
+  const current = readJson(STORAGE_KEY)?.settings || {};
+  return { studentName: 'Pablo', defaultStart: '09:00', defaultEnd: '16:00', ...saved, ...current };
+}
+function bytesFromBase64(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+function base64FromBytes(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += 32768) binary += String.fromCharCode(...bytes.subarray(index, index + 32768));
+  return btoa(binary);
+}
+async function deriveVaultKey(pin, salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: VAULT_ITERATIONS, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function decryptVault(vault, pin) {
+  const key = await deriveVaultKey(pin, bytesFromBase64(vault.salt));
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytesFromBase64(vault.iv) }, key, bytesFromBase64(vault.encrypted));
+  const payload = JSON.parse(new TextDecoder().decode(decrypted));
+  if (payload.format !== 'PhoneGestVault1') throw new Error('Formato de registros no válido.');
+  return { key, records: normalizeRecords(payload.records) };
+}
+function persistVault(vault, key, records) {
+  const snapshot = JSON.stringify({ format: 'PhoneGestVault1', records });
+  vaultWrites = vaultWrites.catch(() => {}).then(async () => {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(snapshot));
+    localStorage.setItem(VAULT_KEY, JSON.stringify({ ...vault, iv: base64FromBytes(iv), encrypted: base64FromBytes(encrypted) }));
+  });
+  return vaultWrites;
+}
 function loadInitial() {
   const fallback = { records: {}, settings: { studentName: 'Pablo', defaultStart: '09:00', defaultEnd: '16:00' } };
+  const vault = readVault();
+  const settings = loadSettings();
+  if (vault) return { records: {}, settings, vault, requiresAuth: true };
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved?.records) return { ...fallback, ...saved, settings: { ...fallback.settings, ...(saved.settings || {}) } };
-    const old = JSON.parse(localStorage.getItem(OLD_STORAGE_KEY));
+    const saved = readJson(STORAGE_KEY);
+    if (saved?.records) return { ...fallback, ...saved, records: normalizeRecords(saved.records), settings: { ...fallback.settings, ...settings, ...(saved.settings || {}) } };
+    const old = readJson(OLD_STORAGE_KEY);
     if (old && typeof old === 'object') {
-      const records = Object.fromEntries(Object.entries(old).map(([key, value]) => [key, {
-        gitlab: value.gitlab || '', notes: value.ipasen || '', af: value.af || [], tags: value.labels || [], start: value.start || '09:00', end: value.end || '16:00', closed: false,
-      }]));
-      return { ...fallback, records };
+      return { ...fallback, records: normalizeRecords(old), settings: { ...fallback.settings, ...settings } };
     }
   } catch (error) { console.warn('No se pudo restaurar el estado local', error); }
-  return fallback;
+  return { ...fallback, settings };
 }
 
 function Icon({ name, size = 18, stroke = 1.8 }) {
@@ -184,10 +247,38 @@ function SettingsPage({ settings, onSaveSettings, onExport, onImport }) {
   return <div className="page settings-page"><div className="settings-intro"><span className="section-label">PREFERENCIAS</span><h2>Adapta el portal a tu ritmo</h2><p>Estos datos se guardan solo en este navegador.</p></div><section className="settings-card"><div className="settings-section"><div><h3>Perfil</h3><p>Cómo quieres que aparezca tu nombre en los registros.</p></div><label className="field-label">Nombre<input value={form.studentName} onChange={(event) => setForm({ ...form, studentName: event.target.value })} /></label></div><div className="settings-section"><div><h3>Horario habitual</h3><p>Se usará como valor inicial al abrir una jornada.</p></div><div className="settings-time"><label className="field-label">Entrada<input type="time" value={form.defaultStart} onChange={(event) => setForm({ ...form, defaultStart: event.target.value })} /></label><label className="field-label">Salida<input type="time" value={form.defaultEnd} onChange={(event) => setForm({ ...form, defaultEnd: event.target.value })} /></label></div></div><div className="settings-section"><div><h3>Datos</h3><p>Guarda una copia o restaura tus jornadas en otro navegador.</p></div><div className="settings-data-actions"><button className="button soft" onClick={onExport}><Icon name="download" size={15} /> Exportar JSON</button><label className="button soft file-input"><Icon name="upload" size={15} /> Importar JSON<input type="file" accept="application/json" hidden onChange={(event) => event.target.files[0] && onImport(event.target.files[0])} /></label></div></div><div className="settings-save"><span>Los cambios se aplican a los nuevos días.</span><button className="button primary" onClick={() => onSaveSettings(form)}>Guardar ajustes</button></div></section></div>;
 }
 
+function AuthScreen({ vault, onUnlock }) {
+  const [username, setUsername] = useState(vault.username || '');
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
+    setError('');
+    if (!username.trim() || !/^\d{4,8}$/.test(pin)) { setError('Introduce tu usuario y un PIN de 4 a 8 dígitos.'); return; }
+    setBusy(true);
+    try {
+      if (username.trim().toLowerCase() !== String(vault.username).toLowerCase()) throw new Error('Usuario o PIN incorrecto.');
+      const unlocked = await decryptVault(vault, pin);
+      onUnlock({ ...unlocked, vault });
+    } catch (unlockError) {
+      setError(unlockError.message === 'Formato de registros no válido.' ? unlockError.message : 'Usuario o PIN incorrecto.');
+      setPin('');
+    } finally { setBusy(false); }
+  };
+  return <div className="auth-gate"><div className="auth-glow" /><section className="auth-card"><div className="auth-brand"><div className="brand-mark">P<span>•</span></div><div><strong>PhoneGest</strong><small>prácticas 2026</small></div></div><span className="section-label">REGISTROS PROTEGIDOS</span><h1>Vuelve a tus<br /><em>jornadas.</em></h1><p>Introduce tu acceso anterior para recuperar los registros que ya habías guardado.</p><form onSubmit={submit}><label className="auth-label">Usuario<input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus /></label><label className="auth-label">PIN<input type="password" inputMode="numeric" pattern="[0-9]{4,8}" minLength="4" maxLength="8" value={pin} onChange={(event) => setPin(event.target.value)} autoComplete="current-password" /></label>{error && <div className="auth-error">{error}</div>}<button className="button primary auth-submit" disabled={busy}>{busy ? 'Descifrando…' : 'Entrar al portal'} <Icon name="arrow" size={16} /></button></form><small className="auth-note"><Icon name="lock" size={13} /> Tus registros se descifran solo en este navegador.</small></section></div>;
+}
+
 function App() {
-  const initial = useMemo(loadInitial, []); const [records, setRecords] = useState(initial.records); const [settings, setSettings] = useState(initial.settings); const [route, setRoute] = useState('home'); const [selectedDay, setSelectedDay] = useState(null); const [month, setMonth] = useState(9); const [notice, setNotice] = useState(''); const [mobileOpen, setMobileOpen] = useState(false);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify({ records, settings })); }, [records, settings]);
+  const initial = useMemo(loadInitial, []); const [records, setRecords] = useState(initial.requiresAuth ? {} : initial.records); const [settings, setSettings] = useState(initial.settings); const [authState, setAuthState] = useState(initial.requiresAuth ? null : { mode: 'local' }); const [route, setRoute] = useState('home'); const [selectedDay, setSelectedDay] = useState(null); const [month, setMonth] = useState(9); const [notice, setNotice] = useState(''); const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    if (!authState) return;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    if (authState.mode === 'vault') persistVault(authState.vault, authState.key, records);
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify({ records, settings }));
+  }, [records, settings, authState]);
   useEffect(() => { if (!notice) return undefined; const timer = setTimeout(() => setNotice(''), 2600); return () => clearTimeout(timer); }, [notice]);
+  if (!authState) return <AuthScreen vault={initial.vault} onUnlock={({ records: unlockedRecords, key, vault }) => { setRecords(unlockedRecords); setAuthState({ mode: 'vault', key, vault }); }} />;
   const go = (next) => { setRoute(next); setMobileOpen(false); if (next !== 'day') setSelectedDay(null); }; const openDay = (key) => { setSelectedDay(key); setRoute('day'); setMobileOpen(false); };
   const saveDay = (key, data) => { setRecords((current) => ({ ...current, [key]: { ...data, createdAt: current[key]?.createdAt || new Date().toISOString() } })); setNotice('Jornada guardada'); }; const closeDay = (key) => { setRecords((current) => ({ ...current, [key]: { ...current[key], closed: true } })); setNotice('Día cerrado y añadido a tu progreso'); }; const reopenDay = (key) => { setRecords((current) => ({ ...current, [key]: { ...current[key], closed: false } })); setNotice('Día reabierto para editarlo'); }; const deleteDay = (key) => { if (!window.confirm('¿Eliminar este registro?')) return; setRecords((current) => { const next = { ...current }; delete next[key]; return next; }); go('records'); setNotice('Registro eliminado'); };
   const sendSeneca = (key, form) => { window.postMessage({ source: 'PhoneGestPortal', type: 'SEND_SENECA', requestId: window.crypto?.randomUUID?.() || String(Date.now()), payload: { version: 1, date: key, modality: 'Presencial', start: form.start, end: form.end, af: form.af, notes: lines(form.notes).map((line) => `- ${line}`).join('\n') } }, window.location.origin); setNotice('Registro enviado a la extensión'); };

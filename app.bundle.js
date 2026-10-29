@@ -20,6 +20,10 @@
   const WEEKDAYS = ["domingo", "lunes", "martes", "mi\xE9rcoles", "jueves", "viernes", "s\xE1bado"];
   const STORAGE_KEY = "phonegest_practicas_react_v1";
   const OLD_STORAGE_KEY = "phonegest_practices_2026";
+  const VAULT_KEY = "phonegest_practices_vault_2026";
+  const SETTINGS_KEY = "phonegest_practices_settings_2026";
+  const VAULT_ITERATIONS = 35e4;
+  let vaultWrites = Promise.resolve();
   function dateKey(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
@@ -70,28 +74,85 @@
   function statusLabel(status) {
     return { empty: "Sin abrir", draft: "Borrador", progress: "En curso", closed: "Cerrado" }[status] || "Sin abrir";
   }
+  function readJson(key) {
+    try {
+      return JSON.parse(localStorage.getItem(key));
+    } catch {
+      return null;
+    }
+  }
+  function readVault() {
+    const vault = readJson(VAULT_KEY);
+    if (!vault || vault.version !== 1 || !vault.username || !vault.salt || !vault.iv || !vault.encrypted) return null;
+    return vault;
+  }
+  function normalizeRecords(source = {}) {
+    if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+    return Object.fromEntries(Object.entries(source).map(([key, value = {}]) => [key, {
+      gitlab: value.gitlab || "",
+      notes: value.notes || value.ipasen || "",
+      af: Array.isArray(value.af) ? value.af : [],
+      tags: Array.isArray(value.tags) ? value.tags : Array.isArray(value.labels) ? value.labels : [],
+      start: value.start || "09:00",
+      end: value.end || "16:00",
+      closed: Boolean(value.closed),
+      createdAt: value.createdAt || value.updatedAt || void 0
+    }]));
+  }
+  function loadSettings() {
+    const saved = readJson(SETTINGS_KEY) || {};
+    const current = readJson(STORAGE_KEY)?.settings || {};
+    return { studentName: "Pablo", defaultStart: "09:00", defaultEnd: "16:00", ...saved, ...current };
+  }
+  function bytesFromBase64(value) {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  }
+  function base64FromBytes(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let index = 0; index < bytes.length; index += 32768) binary += String.fromCharCode(...bytes.subarray(index, index + 32768));
+    return btoa(binary);
+  }
+  async function deriveVaultKey(pin, salt) {
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: VAULT_ITERATIONS, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  }
+  async function decryptVault(vault, pin) {
+    const key = await deriveVaultKey(pin, bytesFromBase64(vault.salt));
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytesFromBase64(vault.iv) }, key, bytesFromBase64(vault.encrypted));
+    const payload = JSON.parse(new TextDecoder().decode(decrypted));
+    if (payload.format !== "PhoneGestVault1") throw new Error("Formato de registros no v\xE1lido.");
+    return { key, records: normalizeRecords(payload.records) };
+  }
+  function persistVault(vault, key, records) {
+    const snapshot = JSON.stringify({ format: "PhoneGestVault1", records });
+    vaultWrites = vaultWrites.catch(() => {
+    }).then(async () => {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(snapshot));
+      localStorage.setItem(VAULT_KEY, JSON.stringify({ ...vault, iv: base64FromBytes(iv), encrypted: base64FromBytes(encrypted) }));
+    });
+    return vaultWrites;
+  }
   function loadInitial() {
     const fallback = { records: {}, settings: { studentName: "Pablo", defaultStart: "09:00", defaultEnd: "16:00" } };
+    const vault = readVault();
+    const settings = loadSettings();
+    if (vault) return { records: {}, settings, vault, requiresAuth: true };
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (saved?.records) return { ...fallback, ...saved, settings: { ...fallback.settings, ...saved.settings || {} } };
-      const old = JSON.parse(localStorage.getItem(OLD_STORAGE_KEY));
+      const saved = readJson(STORAGE_KEY);
+      if (saved?.records) return { ...fallback, ...saved, records: normalizeRecords(saved.records), settings: { ...fallback.settings, ...settings, ...saved.settings || {} } };
+      const old = readJson(OLD_STORAGE_KEY);
       if (old && typeof old === "object") {
-        const records = Object.fromEntries(Object.entries(old).map(([key, value]) => [key, {
-          gitlab: value.gitlab || "",
-          notes: value.ipasen || "",
-          af: value.af || [],
-          tags: value.labels || [],
-          start: value.start || "09:00",
-          end: value.end || "16:00",
-          closed: false
-        }]));
-        return { ...fallback, records };
+        return { ...fallback, records: normalizeRecords(old), settings: { ...fallback.settings, ...settings } };
       }
     } catch (error) {
       console.warn("No se pudo restaurar el estado local", error);
     }
-    return fallback;
+    return { ...fallback, settings };
   }
   function Icon({ name, size = 18, stroke = 1.8 }) {
     const paths = {
@@ -239,23 +300,57 @@ ${lines(form.gitlab).map((line) => `- ${line}`).join("\n")}`) }, "Copiar formato
     const [form, setForm] = useState(settings);
     return /* @__PURE__ */ React.createElement("div", { className: "page settings-page" }, /* @__PURE__ */ React.createElement("div", { className: "settings-intro" }, /* @__PURE__ */ React.createElement("span", { className: "section-label" }, "PREFERENCIAS"), /* @__PURE__ */ React.createElement("h2", null, "Adapta el portal a tu ritmo"), /* @__PURE__ */ React.createElement("p", null, "Estos datos se guardan solo en este navegador.")), /* @__PURE__ */ React.createElement("section", { className: "settings-card" }, /* @__PURE__ */ React.createElement("div", { className: "settings-section" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", null, "Perfil"), /* @__PURE__ */ React.createElement("p", null, "C\xF3mo quieres que aparezca tu nombre en los registros.")), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Nombre", /* @__PURE__ */ React.createElement("input", { value: form.studentName, onChange: (event) => setForm({ ...form, studentName: event.target.value }) }))), /* @__PURE__ */ React.createElement("div", { className: "settings-section" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", null, "Horario habitual"), /* @__PURE__ */ React.createElement("p", null, "Se usar\xE1 como valor inicial al abrir una jornada.")), /* @__PURE__ */ React.createElement("div", { className: "settings-time" }, /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Entrada", /* @__PURE__ */ React.createElement("input", { type: "time", value: form.defaultStart, onChange: (event) => setForm({ ...form, defaultStart: event.target.value }) })), /* @__PURE__ */ React.createElement("label", { className: "field-label" }, "Salida", /* @__PURE__ */ React.createElement("input", { type: "time", value: form.defaultEnd, onChange: (event) => setForm({ ...form, defaultEnd: event.target.value }) })))), /* @__PURE__ */ React.createElement("div", { className: "settings-section" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", null, "Datos"), /* @__PURE__ */ React.createElement("p", null, "Guarda una copia o restaura tus jornadas en otro navegador.")), /* @__PURE__ */ React.createElement("div", { className: "settings-data-actions" }, /* @__PURE__ */ React.createElement("button", { className: "button soft", onClick: onExport }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 15 }), " Exportar JSON"), /* @__PURE__ */ React.createElement("label", { className: "button soft file-input" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 15 }), " Importar JSON", /* @__PURE__ */ React.createElement("input", { type: "file", accept: "application/json", hidden: true, onChange: (event) => event.target.files[0] && onImport(event.target.files[0]) })))), /* @__PURE__ */ React.createElement("div", { className: "settings-save" }, /* @__PURE__ */ React.createElement("span", null, "Los cambios se aplican a los nuevos d\xEDas."), /* @__PURE__ */ React.createElement("button", { className: "button primary", onClick: () => onSaveSettings(form) }, "Guardar ajustes"))));
   }
+  function AuthScreen({ vault, onUnlock }) {
+    const [username, setUsername] = useState(vault.username || "");
+    const [pin, setPin] = useState("");
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    const submit = async (event) => {
+      event.preventDefault();
+      setError("");
+      if (!username.trim() || !/^\d{4,8}$/.test(pin)) {
+        setError("Introduce tu usuario y un PIN de 4 a 8 d\xEDgitos.");
+        return;
+      }
+      setBusy(true);
+      try {
+        if (username.trim().toLowerCase() !== String(vault.username).toLowerCase()) throw new Error("Usuario o PIN incorrecto.");
+        const unlocked = await decryptVault(vault, pin);
+        onUnlock({ ...unlocked, vault });
+      } catch (unlockError) {
+        setError(unlockError.message === "Formato de registros no v\xE1lido." ? unlockError.message : "Usuario o PIN incorrecto.");
+        setPin("");
+      } finally {
+        setBusy(false);
+      }
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "auth-gate" }, /* @__PURE__ */ React.createElement("div", { className: "auth-glow" }), /* @__PURE__ */ React.createElement("section", { className: "auth-card" }, /* @__PURE__ */ React.createElement("div", { className: "auth-brand" }, /* @__PURE__ */ React.createElement("div", { className: "brand-mark" }, "P", /* @__PURE__ */ React.createElement("span", null, "\u2022")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "PhoneGest"), /* @__PURE__ */ React.createElement("small", null, "pr\xE1cticas 2026"))), /* @__PURE__ */ React.createElement("span", { className: "section-label" }, "REGISTROS PROTEGIDOS"), /* @__PURE__ */ React.createElement("h1", null, "Vuelve a tus", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("em", null, "jornadas.")), /* @__PURE__ */ React.createElement("p", null, "Introduce tu acceso anterior para recuperar los registros que ya hab\xEDas guardado."), /* @__PURE__ */ React.createElement("form", { onSubmit: submit }, /* @__PURE__ */ React.createElement("label", { className: "auth-label" }, "Usuario", /* @__PURE__ */ React.createElement("input", { value: username, onChange: (event) => setUsername(event.target.value), autoComplete: "username", autoFocus: true })), /* @__PURE__ */ React.createElement("label", { className: "auth-label" }, "PIN", /* @__PURE__ */ React.createElement("input", { type: "password", inputMode: "numeric", pattern: "[0-9]{4,8}", minLength: "4", maxLength: "8", value: pin, onChange: (event) => setPin(event.target.value), autoComplete: "current-password" })), error && /* @__PURE__ */ React.createElement("div", { className: "auth-error" }, error), /* @__PURE__ */ React.createElement("button", { className: "button primary auth-submit", disabled: busy }, busy ? "Descifrando\u2026" : "Entrar al portal", " ", /* @__PURE__ */ React.createElement(Icon, { name: "arrow", size: 16 }))), /* @__PURE__ */ React.createElement("small", { className: "auth-note" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 13 }), " Tus registros se descifran solo en este navegador.")));
+  }
   function App() {
     const initial = useMemo(loadInitial, []);
-    const [records, setRecords] = useState(initial.records);
+    const [records, setRecords] = useState(initial.requiresAuth ? {} : initial.records);
     const [settings, setSettings] = useState(initial.settings);
+    const [authState, setAuthState] = useState(initial.requiresAuth ? null : { mode: "local" });
     const [route, setRoute] = useState("home");
     const [selectedDay, setSelectedDay] = useState(null);
     const [month, setMonth] = useState(9);
     const [notice, setNotice] = useState("");
     const [mobileOpen, setMobileOpen] = useState(false);
     useEffect(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ records, settings }));
-    }, [records, settings]);
+      if (!authState) return;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      if (authState.mode === "vault") persistVault(authState.vault, authState.key, records);
+      else localStorage.setItem(STORAGE_KEY, JSON.stringify({ records, settings }));
+    }, [records, settings, authState]);
     useEffect(() => {
       if (!notice) return void 0;
       const timer = setTimeout(() => setNotice(""), 2600);
       return () => clearTimeout(timer);
     }, [notice]);
+    if (!authState) return /* @__PURE__ */ React.createElement(AuthScreen, { vault: initial.vault, onUnlock: ({ records: unlockedRecords, key, vault }) => {
+      setRecords(unlockedRecords);
+      setAuthState({ mode: "vault", key, vault });
+    } });
     const go = (next) => {
       setRoute(next);
       setMobileOpen(false);
