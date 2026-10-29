@@ -58,7 +58,7 @@ function duration(start, end) {
   return `${Math.floor(value / 60)} h${value % 60 ? ` ${value % 60} min` : ''}`;
 }
 function lines(text = '') {
-  return text.split(/\r?\n/).map((line) => line.trim().replace(/^[--*]\s*/, '')).filter(Boolean);
+  return text.split(/\r?\n/).map((line) => line.trim().replace(/^(?:-|\u2022|\*)\s*/, '')).filter(Boolean);
 }
 function defaultRecord(settings) {
   return { gitlab: '', notes: '', af: [], tags: [], start: settings.defaultStart, end: settings.defaultEnd, closed: false };
