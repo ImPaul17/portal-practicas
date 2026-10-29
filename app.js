@@ -135,6 +135,21 @@ function persistVault(vault, key, records) {
   });
   return vaultWrites;
 }
+async function copyText(text, successMessage = 'Copiado') {
+  if (!String(text || '').trim()) return false;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text; area.style.position = 'fixed'; area.style.opacity = '0';
+    document.body.appendChild(area); area.select(); document.execCommand('copy'); area.remove();
+  }
+  return successMessage;
+}
+function previousWorkingKey(key) {
+  const index = WORKING_DAYS.findIndex((day) => dateKey(day) === key);
+  return index > 0 ? dateKey(WORKING_DAYS[index - 1]) : null;
+}
 function loadInitial() {
   const fallback = { records: {}, settings: { studentName: 'Pablo', defaultStart: '09:00', defaultEnd: '16:00' } };
   const vault = readVault();
@@ -170,6 +185,9 @@ function Icon({ name, size = 18, stroke = 1.8 }) {
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.05.05-1.42 1.42-.05-.05A1.7 1.7 0 0 0 16.4 18a1.7 1.7 0 0 0-1 .99 1.7 1.7 0 0 0-.16.72v.08h-2v-.08A1.7 1.7 0 0 0 12 18a1.7 1.7 0 0 0-1-.99 1.7 1.7 0 0 0-1.88.34l-.05.05-1.42-1.42.05-.05A1.7 1.7 0 0 0 8 14.4a1.7 1.7 0 0 0-.99-1 1.7 1.7 0 0 0-.72-.16h-.08v-2h.08A1.7 1.7 0 0 0 8 10a1.7 1.7 0 0 0-.34-1.88l-.05-.05 1.42-1.42.05.05A1.7 1.7 0 0 0 10.6 7a1.7 1.7 0 0 0 1-.99 1.7 1.7 0 0 0 .16-.72v-.08h2v.08A1.7 1.7 0 0 0 14 6a1.7 1.7 0 0 0 1 .99 1.7 1.7 0 0 0 1.88-.34l.05-.05 1.42 1.42-.05.05A1.7 1.7 0 0 0 18 9.6a1.7 1.7 0 0 0 .99 1 1.7 1.7 0 0 0 .72.16h.08v2h-.08A1.7 1.7 0 0 0 18 14a1.7 1.7 0 0 0 1.4 1z" /></>,
     download: <><path d="M12 3v12" /><path d="m7 10 5 5 5-5M4 20h16" /></>,
     upload: <><path d="M12 15V3" /><path d="m7 8 5-5 5 5M4 20h16" /></>,
+    copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
+    repeat: <><path d="m17 2 4 4-4 4" /><path d="M3 11V9a3 3 0 0 1 3-3h15" /><path d="m7 22-4-4 4-4" /><path d="M21 13v2a3 3 0 0 1-3 3H3" /></>,
+    trash: <><path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 13h10l1-13M9 7V4h6v3" /></>,
     close: <><path d="m6 6 12 12M18 6 6 18" /></>,
     menu: <><path d="M4 7h16M4 12h16M4 17h16" /></>,
     external: <><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" /></>,
@@ -210,10 +228,10 @@ function monthCells(month) {
   return Array.from({ length: 42 }, (_, index) => { const number = index - offset + 1; return number < 1 || number > daysInMonth ? null : new Date(2026, month, number); });
 }
 
-function CalendarPage({ records, month, setMonth, onOpenDay }) {
+function CalendarPage({ records, month, setMonth, onOpenDay, onContextDay }) {
   const cells = monthCells(month);
   const monthName = `${MONTHS[month][0].toUpperCase()}${MONTHS[month].slice(1)} 2026`;
-  return <div className="page calendar-page"><div className="calendar-toolbar"><p className="page-intro">Planifica, abre y revisa cada jornada.</p><div className="month-switch"><button className="round-button" disabled={month <= 9} onClick={() => setMonth((value) => value - 1)}><Icon name="chevronLeft" size={16} /></button><strong>{monthName}</strong><button className="round-button" disabled={month >= 11} onClick={() => setMonth((value) => value + 1)}><Icon name="chevronRight" size={16} /></button></div></div><section className="calendar-panel"><div className="calendar-week"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div><div className="calendar-grid">{cells.map((date, index) => { if (!date) return <div className="calendar-cell blank" key={`blank-${index}`} />; const key = dateKey(date); const record = records[key]; const status = statusOf(record); const workday = isWorkingDay(date); return <button key={key} className={`calendar-cell ${workday ? 'workday' : 'nonwork'} ${record ? 'created' : ''}`} disabled={!workday} onClick={() => workday && onOpenDay(key)}><div className="cell-header"><span className="cell-number">{date.getDate()}</span>{record && <span className={`cell-status ${status}`}><i /></span>}</div>{!workday ? <span className="cell-note">{HOLIDAYS[key] || (date.getDay() === 0 || date.getDay() === 6 ? 'Fin de semana' : '')}</span> : record ? <><span className="cell-status-label">{statusLabel(status)}</span><span className="cell-tags">{record.af?.slice(0, 2).map((af) => <b key={af}>{af}</b>)}</span></> : <span className="cell-note open-hint">Abrir día <Icon name="plus" size={12} /></span>}</button>; })}</div></section><div className="calendar-legend"><span><i className="legend-dot closed" /> Cerrado</span><span><i className="legend-dot active" /> En curso</span><span><i className="legend-dot empty" /> Disponible</span><span className="legend-note">Haz clic en cualquier día laborable para abrir su página</span></div></div>;
+  return <div className="page calendar-page"><div className="calendar-toolbar"><p className="page-intro">Planifica, abre y revisa cada jornada.</p><div className="month-switch"><button className="round-button" disabled={month <= 9} onClick={() => setMonth((value) => value - 1)}><Icon name="chevronLeft" size={16} /></button><strong>{monthName}</strong><button className="round-button" disabled={month >= 11} onClick={() => setMonth((value) => value + 1)}><Icon name="chevronRight" size={16} /></button></div></div><section className="calendar-panel"><div className="calendar-week"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div><div className="calendar-grid">{cells.map((date, index) => { if (!date) return <div className="calendar-cell blank" key={`blank-${index}`} />; const key = dateKey(date); const record = records[key]; const status = statusOf(record); const workday = isWorkingDay(date); return <button key={key} className={`calendar-cell ${workday ? 'workday' : 'nonwork'} ${record ? 'created' : ''}`} disabled={!workday} aria-haspopup={workday ? 'menu' : undefined} onClick={() => workday && onOpenDay(key)} onContextMenu={(event) => { if (!workday) return; event.preventDefault(); event.stopPropagation(); onContextDay(event, key); }} onKeyDown={(event) => { if (!workday || !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return; event.preventDefault(); const rect = event.currentTarget.getBoundingClientRect(); onContextDay({ clientX: rect.left + Math.min(rect.width / 2, 120), clientY: rect.top + rect.height / 2 }, key); }}><div className="cell-header"><span className="cell-number">{date.getDate()}</span>{record && <span className={`cell-status ${status}`}><i /></span>}</div>{!workday ? <span className="cell-note">{HOLIDAYS[key] || (date.getDay() === 0 || date.getDay() === 6 ? 'Fin de semana' : '')}</span> : record ? <><span className="cell-status-label">{statusLabel(status)}</span><span className="cell-tags">{record.af?.slice(0, 2).map((af) => <b key={af}>{af}</b>)}</span></> : <span className="cell-note open-hint">Abrir día <Icon name="plus" size={12} /></span>}</button>; })}</div></section><div className="calendar-legend"><span><i className="legend-dot closed" /> Cerrado</span><span><i className="legend-dot active" /> En curso</span><span><i className="legend-dot empty" /> Disponible</span><span className="legend-note">Clic derecho sobre un día para ver acciones rápidas</span></div></div>;
 }
 
 function OpenDayPage({ records, onOpenDay }) {
@@ -236,6 +254,12 @@ function SummaryPage({ records }) {
 function DayPage({ dayKey, records, settings, onSave, onCloseDay, onDelete, onReopen, onSendSeneca }) {
   const existing = records[dayKey]; const draft = (record) => ({ ...defaultRecord(settings), ...(record || {}), af: record?.af || [], tags: record?.tags || [] }); const [form, setForm] = useState(() => draft(existing)); const [tagInput, setTagInput] = useState(''); const isClosed = Boolean(existing?.closed);
   useEffect(() => { setForm(draft(records[dayKey])); }, [dayKey]);
+  useEffect(() => {
+    const hasContent = Boolean(form.gitlab.trim() || form.notes.trim() || form.af.length || form.tags.length);
+    if (isClosed || !hasContent) return undefined;
+    const timer = setTimeout(() => onSave(dayKey, { ...form, updatedAt: new Date().toISOString() }, true), 650);
+    return () => clearTimeout(timer);
+  }, [form, dayKey, isClosed]);
   const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const addTag = (event) => { if (event.key !== 'Enter' && event.key !== ',') return; event.preventDefault(); const clean = tagInput.trim().replace(/^#/, ''); if (clean && !form.tags.includes(clean)) update('tags', [...form.tags, clean]); setTagInput(''); };
   const save = () => onSave(dayKey, { ...form, updatedAt: new Date().toISOString() });
@@ -269,8 +293,23 @@ function AuthScreen({ vault, onUnlock }) {
   return <div className="auth-gate"><div className="auth-glow" /><section className="auth-card"><div className="auth-brand"><div className="brand-mark">P<span>•</span></div><div><strong>PhoneGest</strong><small>prácticas 2026</small></div></div><span className="section-label">REGISTROS PROTEGIDOS</span><h1>Vuelve a tus<br /><em>jornadas.</em></h1><p>Introduce tu acceso anterior para recuperar los registros que ya habías guardado.</p><form onSubmit={submit}><label className="auth-label">Usuario<input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus /></label><label className="auth-label">PIN<input type="password" inputMode="numeric" pattern="[0-9]{4,8}" minLength="4" maxLength="8" value={pin} onChange={(event) => setPin(event.target.value)} autoComplete="current-password" /></label>{error && <div className="auth-error">{error}</div>}<button className="button primary auth-submit" disabled={busy}>{busy ? 'Descifrando…' : 'Entrar al portal'} <Icon name="arrow" size={16} /></button></form><small className="auth-note"><Icon name="lock" size={13} /> Tus registros se descifran solo en este navegador.</small></section></div>;
 }
 
+function ContextMenu({ menu, records, onAction }) {
+  if (!menu) return null;
+  const record = records[menu.key];
+  const status = statusOf(record);
+  const actions = [
+    { key: 'open', label: record ? 'Abrir página' : 'Abrir día', icon: 'arrow' },
+    record ? { key: record.closed ? 'reopen' : 'close', label: record.closed ? 'Reabrir día' : 'Cerrar día', icon: record.closed ? 'unlock' : 'lock' } : null,
+    { key: 'copy-date', label: 'Copiar fecha', icon: 'calendar' },
+    record ? { key: 'copy-summary', label: 'Copiar resumen', icon: 'copy' } : null,
+    { key: 'duplicate', label: 'Duplicar día anterior', icon: 'repeat' },
+    record ? { key: 'delete', label: 'Eliminar registro', icon: 'trash', danger: true } : null,
+  ].filter(Boolean);
+  return <div className="calendar-context-menu" role="menu" style={{ left: menu.x, top: menu.y }} onClick={(event) => event.stopPropagation()}><div className="context-menu-head"><span><strong>{formatShortDate(menu.key)}</strong><small>{statusLabel(status)}</small></span><span className={`context-status ${status}`} /></div><div className="context-menu-items">{actions.map((item) => <button key={item.key} role="menuitem" className={item.danger ? 'danger' : ''} onClick={() => onAction(item.key, menu.key)}><Icon name={item.icon} size={15} /><span>{item.label}</span></button>)}</div></div>;
+}
+
 function App() {
-  const initial = useMemo(loadInitial, []); const [records, setRecords] = useState(initial.requiresAuth ? {} : initial.records); const [settings, setSettings] = useState(initial.settings); const [authState, setAuthState] = useState(initial.requiresAuth ? null : { mode: 'local' }); const [route, setRoute] = useState('home'); const [selectedDay, setSelectedDay] = useState(null); const [month, setMonth] = useState(9); const [notice, setNotice] = useState(''); const [mobileOpen, setMobileOpen] = useState(false);
+  const initial = useMemo(loadInitial, []); const [records, setRecords] = useState(initial.requiresAuth ? {} : initial.records); const [settings, setSettings] = useState(initial.settings); const [authState, setAuthState] = useState(initial.requiresAuth ? null : { mode: 'local' }); const [route, setRoute] = useState('home'); const [selectedDay, setSelectedDay] = useState(null); const [month, setMonth] = useState(9); const [notice, setNotice] = useState(''); const [mobileOpen, setMobileOpen] = useState(false); const [contextMenu, setContextMenu] = useState(null);
   useEffect(() => {
     if (!authState) return;
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -278,13 +317,25 @@ function App() {
     else localStorage.setItem(STORAGE_KEY, JSON.stringify({ records, settings }));
   }, [records, settings, authState]);
   useEffect(() => { if (!notice) return undefined; const timer = setTimeout(() => setNotice(''), 2600); return () => clearTimeout(timer); }, [notice]);
+  useEffect(() => { const close = () => setContextMenu(null); window.addEventListener('click', close); window.addEventListener('resize', close); return () => { window.removeEventListener('click', close); window.removeEventListener('resize', close); }; }, []);
   if (!authState) return <AuthScreen vault={initial.vault} onUnlock={({ records: unlockedRecords, key, vault }) => { setRecords(unlockedRecords); setAuthState({ mode: 'vault', key, vault }); }} />;
-  const go = (next) => { setRoute(next); setMobileOpen(false); if (next !== 'day') setSelectedDay(null); }; const openDay = (key) => { setSelectedDay(key); setRoute('day'); setMobileOpen(false); };
-  const saveDay = (key, data) => { setRecords((current) => ({ ...current, [key]: { ...data, createdAt: current[key]?.createdAt || new Date().toISOString() } })); setNotice('Jornada guardada'); }; const closeDay = (key) => { setRecords((current) => ({ ...current, [key]: { ...current[key], closed: true } })); setNotice('Día cerrado y añadido a tu progreso'); }; const reopenDay = (key) => { setRecords((current) => ({ ...current, [key]: { ...current[key], closed: false } })); setNotice('Día reabierto para editarlo'); }; const deleteDay = (key) => { if (!window.confirm('¿Eliminar este registro?')) return; setRecords((current) => { const next = { ...current }; delete next[key]; return next; }); go('records'); setNotice('Registro eliminado'); };
+  const go = (next) => { setContextMenu(null); setRoute(next); setMobileOpen(false); if (next !== 'day') setSelectedDay(null); }; const openDay = (key) => { setContextMenu(null); setSelectedDay(key); setRoute('day'); setMobileOpen(false); };
+  const saveDay = (key, data, silent = false) => { setRecords((current) => ({ ...current, [key]: { ...data, createdAt: current[key]?.createdAt || new Date().toISOString() } })); if (!silent) setNotice('Jornada guardada'); }; const closeDay = (key) => { setRecords((current) => ({ ...current, [key]: { ...current[key], closed: true } })); setNotice('Día cerrado y añadido a tu progreso'); }; const reopenDay = (key) => { setRecords((current) => ({ ...current, [key]: { ...current[key], closed: false } })); setNotice('Día reabierto para editarlo'); }; const deleteDay = (key) => { if (!window.confirm('¿Eliminar este registro?')) return; setRecords((current) => { const next = { ...current }; delete next[key]; return next; }); go('records'); setNotice('Registro eliminado'); };
+  const showContextMenu = (event, key) => { const width = 232; const height = 310; setContextMenu({ key, x: Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8)), y: Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8)) }); };
+  const handleContextAction = async (action, key) => {
+    const record = records[key]; setContextMenu(null);
+    if (action === 'open') return openDay(key);
+    if (action === 'close' && record) return closeDay(key);
+    if (action === 'reopen' && record) return reopenDay(key);
+    if (action === 'copy-date') { const message = await copyText(formatDate(key, { weekday: 'long', year: 'numeric' }), 'Fecha copiada'); if (message) setNotice(message); return; }
+    if (action === 'copy-summary' && record) { const summary = [formatDate(key, { weekday: 'long', year: 'numeric' }), ...lines(record.notes || record.gitlab).map((line) => `- ${line}`)].join('\n'); const message = await copyText(summary, 'Resumen copiado'); if (message) setNotice(message); return; }
+    if (action === 'duplicate') { const previous = previousWorkingKey(key); if (!previous || !records[previous]) { setNotice('El día anterior no tiene contenido'); return; } setRecords((current) => ({ ...current, [key]: { ...current[previous], closed: false, createdAt: new Date().toISOString() } })); setNotice('Día anterior duplicado'); return; }
+    if (action === 'delete' && record) { if (!window.confirm('¿Eliminar este registro?')) return; setRecords((current) => { const next = { ...current }; delete next[key]; return next; }); setNotice('Registro eliminado'); }
+  };
   const sendSeneca = (key, form) => { window.postMessage({ source: 'PhoneGestPortal', type: 'SEND_SENECA', requestId: window.crypto?.randomUUID?.() || String(Date.now()), payload: { version: 1, date: key, modality: 'Presencial', start: form.start, end: form.end, af: form.af, notes: lines(form.notes).map((line) => `- ${line}`).join('\n') } }, window.location.origin); setNotice('Registro enviado a la extensión'); };
   const exportData = () => { const blob = new Blob([JSON.stringify({ app: 'PhoneGest', version: 4, exportedAt: new Date().toISOString(), settings, records }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'phonegest-practicas.json'; anchor.click(); URL.revokeObjectURL(url); setNotice('Copia exportada'); }; const importData = (file) => { const reader = new FileReader(); reader.onload = () => { try { const data = JSON.parse(reader.result); setRecords(data.records || {}); setSettings((current) => ({ ...current, ...(data.settings || {}) })); setNotice('Datos importados'); } catch { setNotice('El archivo no es válido'); } }; reader.readAsText(file); };
   const activeRoute = route === 'day' ? 'day' : route;
-  return <div className={`app-shell ${mobileOpen ? 'mobile-open' : ''}`}><Sidebar route={activeRoute} go={go} records={records} onOpenDay={openDay} settings={settings} /><div className="main-shell"><Topbar route={activeRoute} selectedDay={selectedDay} onOpenDay={() => go('open')} onBack={() => go('records')} onMenu={() => setMobileOpen((value) => !value)} /><main className="content">{route === 'home' && <HomePage records={records} settings={settings} go={go} onOpenDay={openDay} />}{route === 'calendar' && <CalendarPage records={records} month={month} setMonth={setMonth} onOpenDay={openDay} />}{route === 'open' && <OpenDayPage records={records} onOpenDay={openDay} />}{route === 'records' && <RecordsPage records={records} onOpenDay={openDay} />}{route === 'summary' && <SummaryPage records={records} />}{route === 'settings' && <SettingsPage settings={settings} onSaveSettings={(next) => { setSettings(next); setNotice('Ajustes guardados'); }} onExport={exportData} onImport={importData} />}{route === 'day' && selectedDay && <DayPage dayKey={selectedDay} records={records} settings={settings} onSave={saveDay} onCloseDay={closeDay} onDelete={deleteDay} onReopen={reopenDay} onSendSeneca={sendSeneca} />}</main></div>{notice && <div className="toast"><span><Icon name="check" size={14} /></span>{notice}</div>}</div>;
+  return <div className={`app-shell ${mobileOpen ? 'mobile-open' : ''}`}><Sidebar route={activeRoute} go={go} records={records} onOpenDay={openDay} settings={settings} /><div className="main-shell"><Topbar route={activeRoute} selectedDay={selectedDay} onOpenDay={() => go('open')} onBack={() => go('records')} onMenu={() => setMobileOpen((value) => !value)} /><main className="content">{route === 'home' && <HomePage records={records} settings={settings} go={go} onOpenDay={openDay} />}{route === 'calendar' && <CalendarPage records={records} month={month} setMonth={setMonth} onOpenDay={openDay} onContextDay={showContextMenu} />}{route === 'open' && <OpenDayPage records={records} onOpenDay={openDay} />}{route === 'records' && <RecordsPage records={records} onOpenDay={openDay} />}{route === 'summary' && <SummaryPage records={records} />}{route === 'settings' && <SettingsPage settings={settings} onSaveSettings={(next) => { setSettings(next); setNotice('Ajustes guardados'); }} onExport={exportData} onImport={importData} />}{route === 'day' && selectedDay && <DayPage dayKey={selectedDay} records={records} settings={settings} onSave={saveDay} onCloseDay={closeDay} onDelete={deleteDay} onReopen={reopenDay} onSendSeneca={sendSeneca} />}</main></div><ContextMenu menu={contextMenu} records={records} onAction={handleContextAction} />{notice && <div className="toast"><span><Icon name="check" size={14} /></span>{notice}</div>}</div>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

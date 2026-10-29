@@ -137,6 +137,26 @@
     });
     return vaultWrites;
   }
+  async function copyText(text, successMessage = "Copiado") {
+    if (!String(text || "").trim()) return false;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+    return successMessage;
+  }
+  function previousWorkingKey(key) {
+    const index = WORKING_DAYS.findIndex((day) => dateKey(day) === key);
+    return index > 0 ? dateKey(WORKING_DAYS[index - 1]) : null;
+  }
   function loadInitial() {
     const fallback = { records: {}, settings: { studentName: "Pablo", defaultStart: "09:00", defaultEnd: "16:00" } };
     const vault = readVault();
@@ -173,6 +193,9 @@
       settings: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "3" }), /* @__PURE__ */ React.createElement("path", { d: "M19.4 15a1.7 1.7 0 0 0 .34 1.88l.05.05-1.42 1.42-.05-.05A1.7 1.7 0 0 0 16.4 18a1.7 1.7 0 0 0-1 .99 1.7 1.7 0 0 0-.16.72v.08h-2v-.08A1.7 1.7 0 0 0 12 18a1.7 1.7 0 0 0-1-.99 1.7 1.7 0 0 0-1.88.34l-.05.05-1.42-1.42.05-.05A1.7 1.7 0 0 0 8 14.4a1.7 1.7 0 0 0-.99-1 1.7 1.7 0 0 0-.72-.16h-.08v-2h.08A1.7 1.7 0 0 0 8 10a1.7 1.7 0 0 0-.34-1.88l-.05-.05 1.42-1.42.05.05A1.7 1.7 0 0 0 10.6 7a1.7 1.7 0 0 0 1-.99 1.7 1.7 0 0 0 .16-.72v-.08h2v.08A1.7 1.7 0 0 0 14 6a1.7 1.7 0 0 0 1 .99 1.7 1.7 0 0 0 1.88-.34l.05-.05 1.42 1.42-.05.05A1.7 1.7 0 0 0 18 9.6a1.7 1.7 0 0 0 .99 1 1.7 1.7 0 0 0 .72.16h.08v2h-.08A1.7 1.7 0 0 0 18 14a1.7 1.7 0 0 0 1.4 1z" })),
       download: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M12 3v12" }), /* @__PURE__ */ React.createElement("path", { d: "m7 10 5 5 5-5M4 20h16" })),
       upload: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M12 15V3" }), /* @__PURE__ */ React.createElement("path", { d: "m7 8 5-5 5 5M4 20h16" })),
+      copy: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("rect", { x: "8", y: "8", width: "12", height: "12", rx: "2" }), /* @__PURE__ */ React.createElement("path", { d: "M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" })),
+      repeat: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "m17 2 4 4-4 4" }), /* @__PURE__ */ React.createElement("path", { d: "M3 11V9a3 3 0 0 1 3-3h15" }), /* @__PURE__ */ React.createElement("path", { d: "m7 22-4-4 4-4" }), /* @__PURE__ */ React.createElement("path", { d: "M21 13v2a3 3 0 0 1-3 3H3" })),
+      trash: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M4 7h16" }), /* @__PURE__ */ React.createElement("path", { d: "M10 11v6M14 11v6" }), /* @__PURE__ */ React.createElement("path", { d: "M6 7l1 13h10l1-13M9 7V4h6v3" })),
       close: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "m6 6 12 12M18 6 6 18" })),
       menu: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M4 7h16M4 12h16M4 17h16" })),
       external: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M14 4h6v6M20 4l-9 9" }), /* @__PURE__ */ React.createElement("path", { d: "M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" }))
@@ -223,7 +246,7 @@
       return number < 1 || number > daysInMonth ? null : new Date(2026, month, number);
     });
   }
-  function CalendarPage({ records, month, setMonth, onOpenDay }) {
+  function CalendarPage({ records, month, setMonth, onOpenDay, onContextDay }) {
     const cells = monthCells(month);
     const monthName = `${MONTHS[month][0].toUpperCase()}${MONTHS[month].slice(1)} 2026`;
     return /* @__PURE__ */ React.createElement("div", { className: "page calendar-page" }, /* @__PURE__ */ React.createElement("div", { className: "calendar-toolbar" }, /* @__PURE__ */ React.createElement("p", { className: "page-intro" }, "Planifica, abre y revisa cada jornada."), /* @__PURE__ */ React.createElement("div", { className: "month-switch" }, /* @__PURE__ */ React.createElement("button", { className: "round-button", disabled: month <= 9, onClick: () => setMonth((value) => value - 1) }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 16 })), /* @__PURE__ */ React.createElement("strong", null, monthName), /* @__PURE__ */ React.createElement("button", { className: "round-button", disabled: month >= 11, onClick: () => setMonth((value) => value + 1) }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 16 })))), /* @__PURE__ */ React.createElement("section", { className: "calendar-panel" }, /* @__PURE__ */ React.createElement("div", { className: "calendar-week" }, /* @__PURE__ */ React.createElement("span", null, "LUN"), /* @__PURE__ */ React.createElement("span", null, "MAR"), /* @__PURE__ */ React.createElement("span", null, "MI\xC9"), /* @__PURE__ */ React.createElement("span", null, "JUE"), /* @__PURE__ */ React.createElement("span", null, "VIE"), /* @__PURE__ */ React.createElement("span", null, "S\xC1B"), /* @__PURE__ */ React.createElement("span", null, "DOM")), /* @__PURE__ */ React.createElement("div", { className: "calendar-grid" }, cells.map((date, index) => {
@@ -232,8 +255,18 @@
       const record = records[key];
       const status = statusOf(record);
       const workday = isWorkingDay(date);
-      return /* @__PURE__ */ React.createElement("button", { key, className: `calendar-cell ${workday ? "workday" : "nonwork"} ${record ? "created" : ""}`, disabled: !workday, onClick: () => workday && onOpenDay(key) }, /* @__PURE__ */ React.createElement("div", { className: "cell-header" }, /* @__PURE__ */ React.createElement("span", { className: "cell-number" }, date.getDate()), record && /* @__PURE__ */ React.createElement("span", { className: `cell-status ${status}` }, /* @__PURE__ */ React.createElement("i", null))), !workday ? /* @__PURE__ */ React.createElement("span", { className: "cell-note" }, HOLIDAYS[key] || (date.getDay() === 0 || date.getDay() === 6 ? "Fin de semana" : "")) : record ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "cell-status-label" }, statusLabel(status)), /* @__PURE__ */ React.createElement("span", { className: "cell-tags" }, record.af?.slice(0, 2).map((af) => /* @__PURE__ */ React.createElement("b", { key: af }, af)))) : /* @__PURE__ */ React.createElement("span", { className: "cell-note open-hint" }, "Abrir d\xEDa ", /* @__PURE__ */ React.createElement(Icon, { name: "plus", size: 12 })));
-    }))), /* @__PURE__ */ React.createElement("div", { className: "calendar-legend" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "legend-dot closed" }), " Cerrado"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "legend-dot active" }), " En curso"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "legend-dot empty" }), " Disponible"), /* @__PURE__ */ React.createElement("span", { className: "legend-note" }, "Haz clic en cualquier d\xEDa laborable para abrir su p\xE1gina")));
+      return /* @__PURE__ */ React.createElement("button", { key, className: `calendar-cell ${workday ? "workday" : "nonwork"} ${record ? "created" : ""}`, disabled: !workday, "aria-haspopup": workday ? "menu" : void 0, onClick: () => workday && onOpenDay(key), onContextMenu: (event) => {
+        if (!workday) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onContextDay(event, key);
+      }, onKeyDown: (event) => {
+        if (!workday || !(event.key === "ContextMenu" || event.shiftKey && event.key === "F10")) return;
+        event.preventDefault();
+        const rect = event.currentTarget.getBoundingClientRect();
+        onContextDay({ clientX: rect.left + Math.min(rect.width / 2, 120), clientY: rect.top + rect.height / 2 }, key);
+      } }, /* @__PURE__ */ React.createElement("div", { className: "cell-header" }, /* @__PURE__ */ React.createElement("span", { className: "cell-number" }, date.getDate()), record && /* @__PURE__ */ React.createElement("span", { className: `cell-status ${status}` }, /* @__PURE__ */ React.createElement("i", null))), !workday ? /* @__PURE__ */ React.createElement("span", { className: "cell-note" }, HOLIDAYS[key] || (date.getDay() === 0 || date.getDay() === 6 ? "Fin de semana" : "")) : record ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "cell-status-label" }, statusLabel(status)), /* @__PURE__ */ React.createElement("span", { className: "cell-tags" }, record.af?.slice(0, 2).map((af) => /* @__PURE__ */ React.createElement("b", { key: af }, af)))) : /* @__PURE__ */ React.createElement("span", { className: "cell-note open-hint" }, "Abrir d\xEDa ", /* @__PURE__ */ React.createElement(Icon, { name: "plus", size: 12 })));
+    }))), /* @__PURE__ */ React.createElement("div", { className: "calendar-legend" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "legend-dot closed" }), " Cerrado"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "legend-dot active" }), " En curso"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "legend-dot empty" }), " Disponible"), /* @__PURE__ */ React.createElement("span", { className: "legend-note" }, "Clic derecho sobre un d\xEDa para ver acciones r\xE1pidas")));
   }
   function OpenDayPage({ records, onOpenDay }) {
     const [query, setQuery] = useState("");
@@ -276,6 +309,12 @@
     useEffect(() => {
       setForm(draft(records[dayKey]));
     }, [dayKey]);
+    useEffect(() => {
+      const hasContent = Boolean(form.gitlab.trim() || form.notes.trim() || form.af.length || form.tags.length);
+      if (isClosed || !hasContent) return void 0;
+      const timer = setTimeout(() => onSave(dayKey, { ...form, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, true), 650);
+      return () => clearTimeout(timer);
+    }, [form, dayKey, isClosed]);
     const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
     const addTag = (event) => {
       if (event.key !== "Enter" && event.key !== ",") return;
@@ -326,6 +365,20 @@ ${lines(form.gitlab).map((line) => `- ${line}`).join("\n")}`) }, "Copiar formato
     };
     return /* @__PURE__ */ React.createElement("div", { className: "auth-gate" }, /* @__PURE__ */ React.createElement("div", { className: "auth-glow" }), /* @__PURE__ */ React.createElement("section", { className: "auth-card" }, /* @__PURE__ */ React.createElement("div", { className: "auth-brand" }, /* @__PURE__ */ React.createElement("div", { className: "brand-mark" }, "P", /* @__PURE__ */ React.createElement("span", null, "\u2022")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "PhoneGest"), /* @__PURE__ */ React.createElement("small", null, "pr\xE1cticas 2026"))), /* @__PURE__ */ React.createElement("span", { className: "section-label" }, "REGISTROS PROTEGIDOS"), /* @__PURE__ */ React.createElement("h1", null, "Vuelve a tus", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("em", null, "jornadas.")), /* @__PURE__ */ React.createElement("p", null, "Introduce tu acceso anterior para recuperar los registros que ya hab\xEDas guardado."), /* @__PURE__ */ React.createElement("form", { onSubmit: submit }, /* @__PURE__ */ React.createElement("label", { className: "auth-label" }, "Usuario", /* @__PURE__ */ React.createElement("input", { value: username, onChange: (event) => setUsername(event.target.value), autoComplete: "username", autoFocus: true })), /* @__PURE__ */ React.createElement("label", { className: "auth-label" }, "PIN", /* @__PURE__ */ React.createElement("input", { type: "password", inputMode: "numeric", pattern: "[0-9]{4,8}", minLength: "4", maxLength: "8", value: pin, onChange: (event) => setPin(event.target.value), autoComplete: "current-password" })), error && /* @__PURE__ */ React.createElement("div", { className: "auth-error" }, error), /* @__PURE__ */ React.createElement("button", { className: "button primary auth-submit", disabled: busy }, busy ? "Descifrando\u2026" : "Entrar al portal", " ", /* @__PURE__ */ React.createElement(Icon, { name: "arrow", size: 16 }))), /* @__PURE__ */ React.createElement("small", { className: "auth-note" }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 13 }), " Tus registros se descifran solo en este navegador.")));
   }
+  function ContextMenu({ menu, records, onAction }) {
+    if (!menu) return null;
+    const record = records[menu.key];
+    const status = statusOf(record);
+    const actions = [
+      { key: "open", label: record ? "Abrir p\xE1gina" : "Abrir d\xEDa", icon: "arrow" },
+      record ? { key: record.closed ? "reopen" : "close", label: record.closed ? "Reabrir d\xEDa" : "Cerrar d\xEDa", icon: record.closed ? "unlock" : "lock" } : null,
+      { key: "copy-date", label: "Copiar fecha", icon: "calendar" },
+      record ? { key: "copy-summary", label: "Copiar resumen", icon: "copy" } : null,
+      { key: "duplicate", label: "Duplicar d\xEDa anterior", icon: "repeat" },
+      record ? { key: "delete", label: "Eliminar registro", icon: "trash", danger: true } : null
+    ].filter(Boolean);
+    return /* @__PURE__ */ React.createElement("div", { className: "calendar-context-menu", role: "menu", style: { left: menu.x, top: menu.y }, onClick: (event) => event.stopPropagation() }, /* @__PURE__ */ React.createElement("div", { className: "context-menu-head" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("strong", null, formatShortDate(menu.key)), /* @__PURE__ */ React.createElement("small", null, statusLabel(status))), /* @__PURE__ */ React.createElement("span", { className: `context-status ${status}` })), /* @__PURE__ */ React.createElement("div", { className: "context-menu-items" }, actions.map((item) => /* @__PURE__ */ React.createElement("button", { key: item.key, role: "menuitem", className: item.danger ? "danger" : "", onClick: () => onAction(item.key, menu.key) }, /* @__PURE__ */ React.createElement(Icon, { name: item.icon, size: 15 }), /* @__PURE__ */ React.createElement("span", null, item.label)))));
+  }
   function App() {
     const initial = useMemo(loadInitial, []);
     const [records, setRecords] = useState(initial.requiresAuth ? {} : initial.records);
@@ -336,6 +389,7 @@ ${lines(form.gitlab).map((line) => `- ${line}`).join("\n")}`) }, "Copiar formato
     const [month, setMonth] = useState(9);
     const [notice, setNotice] = useState("");
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [contextMenu, setContextMenu] = useState(null);
     useEffect(() => {
       if (!authState) return;
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -347,23 +401,34 @@ ${lines(form.gitlab).map((line) => `- ${line}`).join("\n")}`) }, "Copiar formato
       const timer = setTimeout(() => setNotice(""), 2600);
       return () => clearTimeout(timer);
     }, [notice]);
+    useEffect(() => {
+      const close = () => setContextMenu(null);
+      window.addEventListener("click", close);
+      window.addEventListener("resize", close);
+      return () => {
+        window.removeEventListener("click", close);
+        window.removeEventListener("resize", close);
+      };
+    }, []);
     if (!authState) return /* @__PURE__ */ React.createElement(AuthScreen, { vault: initial.vault, onUnlock: ({ records: unlockedRecords, key, vault }) => {
       setRecords(unlockedRecords);
       setAuthState({ mode: "vault", key, vault });
     } });
     const go = (next) => {
+      setContextMenu(null);
       setRoute(next);
       setMobileOpen(false);
       if (next !== "day") setSelectedDay(null);
     };
     const openDay = (key) => {
+      setContextMenu(null);
       setSelectedDay(key);
       setRoute("day");
       setMobileOpen(false);
     };
-    const saveDay = (key, data) => {
+    const saveDay = (key, data, silent = false) => {
       setRecords((current) => ({ ...current, [key]: { ...data, createdAt: current[key]?.createdAt || (/* @__PURE__ */ new Date()).toISOString() } }));
-      setNotice("Jornada guardada");
+      if (!silent) setNotice("Jornada guardada");
     };
     const closeDay = (key) => {
       setRecords((current) => ({ ...current, [key]: { ...current[key], closed: true } }));
@@ -382,6 +447,48 @@ ${lines(form.gitlab).map((line) => `- ${line}`).join("\n")}`) }, "Copiar formato
       });
       go("records");
       setNotice("Registro eliminado");
+    };
+    const showContextMenu = (event, key) => {
+      const width = 232;
+      const height = 310;
+      setContextMenu({ key, x: Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8)), y: Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8)) });
+    };
+    const handleContextAction = async (action, key) => {
+      const record = records[key];
+      setContextMenu(null);
+      if (action === "open") return openDay(key);
+      if (action === "close" && record) return closeDay(key);
+      if (action === "reopen" && record) return reopenDay(key);
+      if (action === "copy-date") {
+        const message = await copyText(formatDate(key, { weekday: "long", year: "numeric" }), "Fecha copiada");
+        if (message) setNotice(message);
+        return;
+      }
+      if (action === "copy-summary" && record) {
+        const summary = [formatDate(key, { weekday: "long", year: "numeric" }), ...lines(record.notes || record.gitlab).map((line) => `- ${line}`)].join("\n");
+        const message = await copyText(summary, "Resumen copiado");
+        if (message) setNotice(message);
+        return;
+      }
+      if (action === "duplicate") {
+        const previous = previousWorkingKey(key);
+        if (!previous || !records[previous]) {
+          setNotice("El d\xEDa anterior no tiene contenido");
+          return;
+        }
+        setRecords((current) => ({ ...current, [key]: { ...current[previous], closed: false, createdAt: (/* @__PURE__ */ new Date()).toISOString() } }));
+        setNotice("D\xEDa anterior duplicado");
+        return;
+      }
+      if (action === "delete" && record) {
+        if (!window.confirm("\xBFEliminar este registro?")) return;
+        setRecords((current) => {
+          const next = { ...current };
+          delete next[key];
+          return next;
+        });
+        setNotice("Registro eliminado");
+      }
     };
     const sendSeneca = (key, form) => {
       window.postMessage({ source: "PhoneGestPortal", type: "SEND_SENECA", requestId: window.crypto?.randomUUID?.() || String(Date.now()), payload: { version: 1, date: key, modality: "Presencial", start: form.start, end: form.end, af: form.af, notes: lines(form.notes).map((line) => `- ${line}`).join("\n") } }, window.location.origin);
@@ -412,10 +519,10 @@ ${lines(form.gitlab).map((line) => `- ${line}`).join("\n")}`) }, "Copiar formato
       reader.readAsText(file);
     };
     const activeRoute = route === "day" ? "day" : route;
-    return /* @__PURE__ */ React.createElement("div", { className: `app-shell ${mobileOpen ? "mobile-open" : ""}` }, /* @__PURE__ */ React.createElement(Sidebar, { route: activeRoute, go, records, onOpenDay: openDay, settings }), /* @__PURE__ */ React.createElement("div", { className: "main-shell" }, /* @__PURE__ */ React.createElement(Topbar, { route: activeRoute, selectedDay, onOpenDay: () => go("open"), onBack: () => go("records"), onMenu: () => setMobileOpen((value) => !value) }), /* @__PURE__ */ React.createElement("main", { className: "content" }, route === "home" && /* @__PURE__ */ React.createElement(HomePage, { records, settings, go, onOpenDay: openDay }), route === "calendar" && /* @__PURE__ */ React.createElement(CalendarPage, { records, month, setMonth, onOpenDay: openDay }), route === "open" && /* @__PURE__ */ React.createElement(OpenDayPage, { records, onOpenDay: openDay }), route === "records" && /* @__PURE__ */ React.createElement(RecordsPage, { records, onOpenDay: openDay }), route === "summary" && /* @__PURE__ */ React.createElement(SummaryPage, { records }), route === "settings" && /* @__PURE__ */ React.createElement(SettingsPage, { settings, onSaveSettings: (next) => {
+    return /* @__PURE__ */ React.createElement("div", { className: `app-shell ${mobileOpen ? "mobile-open" : ""}` }, /* @__PURE__ */ React.createElement(Sidebar, { route: activeRoute, go, records, onOpenDay: openDay, settings }), /* @__PURE__ */ React.createElement("div", { className: "main-shell" }, /* @__PURE__ */ React.createElement(Topbar, { route: activeRoute, selectedDay, onOpenDay: () => go("open"), onBack: () => go("records"), onMenu: () => setMobileOpen((value) => !value) }), /* @__PURE__ */ React.createElement("main", { className: "content" }, route === "home" && /* @__PURE__ */ React.createElement(HomePage, { records, settings, go, onOpenDay: openDay }), route === "calendar" && /* @__PURE__ */ React.createElement(CalendarPage, { records, month, setMonth, onOpenDay: openDay, onContextDay: showContextMenu }), route === "open" && /* @__PURE__ */ React.createElement(OpenDayPage, { records, onOpenDay: openDay }), route === "records" && /* @__PURE__ */ React.createElement(RecordsPage, { records, onOpenDay: openDay }), route === "summary" && /* @__PURE__ */ React.createElement(SummaryPage, { records }), route === "settings" && /* @__PURE__ */ React.createElement(SettingsPage, { settings, onSaveSettings: (next) => {
       setSettings(next);
       setNotice("Ajustes guardados");
-    }, onExport: exportData, onImport: importData }), route === "day" && selectedDay && /* @__PURE__ */ React.createElement(DayPage, { dayKey: selectedDay, records, settings, onSave: saveDay, onCloseDay: closeDay, onDelete: deleteDay, onReopen: reopenDay, onSendSeneca: sendSeneca }))), notice && /* @__PURE__ */ React.createElement("div", { className: "toast" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement(Icon, { name: "check", size: 14 })), notice));
+    }, onExport: exportData, onImport: importData }), route === "day" && selectedDay && /* @__PURE__ */ React.createElement(DayPage, { dayKey: selectedDay, records, settings, onSave: saveDay, onCloseDay: closeDay, onDelete: deleteDay, onReopen: reopenDay, onSendSeneca: sendSeneca }))), /* @__PURE__ */ React.createElement(ContextMenu, { menu: contextMenu, records, onAction: handleContextAction }), notice && /* @__PURE__ */ React.createElement("div", { className: "toast" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement(Icon, { name: "check", size: 14 })), notice));
   }
   ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
 })();
