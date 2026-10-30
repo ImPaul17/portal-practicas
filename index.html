@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261030-liquid2" />
+  <link rel="stylesheet" href="styles.css?v=20261030-liquid3" />
 </head>
 <body>
   <div class="liquid-scene" aria-hidden="true">
@@ -17,7 +17,7 @@
     <div class="liquid-color liquid-color-mint"></div>
     <div class="liquid-color liquid-color-blue"></div>
     <div class="liquid-color liquid-color-violet"></div>
-    <div class="liquid-cursor-glow"></div>
+    <div class="liquid-color liquid-color-glow"></div>
     <div class="liquid-orb" data-config='{"cornerRadius":150,"zRadius":90,"blurAmount":0.12,"refraction":0.85,"chromAberration":0.18,"edgeHighlight":0.25}'></div>
   </div>
   <div id="root"></div>
@@ -25,23 +25,6 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="app.bundle.js?v=20261030-glass"></script>
   <script type="module">
-    const scene = document.querySelector('.liquid-scene');
-    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let pointerFrame = 0;
-    let pointerX = 0;
-    let pointerY = 0;
-    window.addEventListener('pointermove', (event) => {
-      if (motionPreference.matches || event.pointerType === 'touch') return;
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-      if (pointerFrame) return;
-      pointerFrame = requestAnimationFrame(() => {
-        scene.style.setProperty('--cursor-x', `${pointerX}px`);
-        scene.style.setProperty('--cursor-y', `${pointerY}px`);
-        pointerFrame = 0;
-      });
-    }, { passive: true });
-
     const startLiquidGlass = async () => {
       try {
         const { LiquidGlass } = await import('https://cdn.jsdelivr.net/npm/@ybouane/liquidglass@1.0.3/dist/index.js');
