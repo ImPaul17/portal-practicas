@@ -9,12 +9,41 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20261030-glass" />
 </head>
 <body>
+  <div class="liquid-scene" aria-hidden="true">
+    <div class="liquid-scene-backdrop"></div>
+    <div class="liquid-orb" data-config='{"cornerRadius":150,"zRadius":80,"blurAmount":0.2,"refraction":0.65}'></div>
+  </div>
   <div id="root"></div>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="app.bundle.js"></script>
+  <script src="app.bundle.js?v=20261030-glass"></script>
+  <script type="module">
+    const startLiquidGlass = async () => {
+      try {
+        const { LiquidGlass } = await import('https://cdn.jsdelivr.net/npm/@ybouane/liquidglass@1.0.3/dist/index.js');
+        const root = document.querySelector('.liquid-scene');
+        await document.fonts.ready;
+        await LiquidGlass.init({
+          root,
+          glassElements: root.querySelectorAll(':scope > .liquid-orb'),
+          defaults: {
+            blurAmount: 0.22,
+            refraction: 0.42,
+            chromAberration: 0.035,
+            edgeHighlight: 0.12,
+            fresnel: 0.75,
+            zRadius: 24,
+            shadowOpacity: 0.28,
+          },
+        });
+      } catch (error) {
+        console.info('Liquid Glass fallback activo', error);
+      }
+    };
+    startLiquidGlass();
+  </script>
 </body>
 </html>

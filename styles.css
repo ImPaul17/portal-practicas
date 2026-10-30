@@ -189,3 +189,35 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .closed-empty { margin: 8px 9px; color: var(--muted-2); font-size: 9px; }
 .calendar-cell.today { box-shadow: inset 0 0 0 1px rgba(93,224,186,.85), inset 0 -3px 0 var(--mint); background: rgba(93,224,186,.055); }
 .calendar-cell.today .cell-number { color: var(--mint); }
+
+/* Liquid glass system: WebGL enhancement with a CSS fallback */
+:root { --glass-bg: rgba(18, 29, 40, .62); --glass-border: rgba(255,255,255,.14); }
+body { background: radial-gradient(circle at 15% 0%, rgba(108,168,255,.09), transparent 28%), radial-gradient(circle at 85% 10%, rgba(93,224,186,.1), transparent 30%), #070b11; }
+.app-shell { position: relative; isolation: isolate; }
+.glass { position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.025) 48%, rgba(93,224,186,.045)); border-color: var(--glass-border); box-shadow: 0 24px 70px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.08); backdrop-filter: blur(20px) saturate(135%); -webkit-backdrop-filter: blur(20px) saturate(135%); }
+.glass > :not(canvas) { position: relative; z-index: 1; }
+.glass > canvas { position: absolute !important; inset: 0; width: 100% !important; height: 100% !important; pointer-events: none; opacity: .9; z-index: 0; }
+.sidebar.glass { background: linear-gradient(180deg, rgba(13,20,29,.82), rgba(8,14,21,.74)); }
+.main-shell.glass { background: linear-gradient(130deg, rgba(10,16,24,.46), rgba(12,20,29,.28)); }
+.hero-card, .panel, .stat-card, .calendar-panel, .editor-card, .aside-card, .summary-hero, .settings-card, .records-table, .open-day-card { background: linear-gradient(135deg, rgba(255,255,255,.075), rgba(255,255,255,.025) 50%, rgba(93,224,186,.045)); border-color: rgba(255,255,255,.13); box-shadow: 0 22px 60px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.07); backdrop-filter: blur(18px) saturate(135%); -webkit-backdrop-filter: blur(18px) saturate(135%); }
+.button, .round-button, .copy-button, .open-day-nav, .days-group-toggle, .filter-pills button, .search-field, .open-search { backdrop-filter: blur(12px) saturate(145%); -webkit-backdrop-filter: blur(12px) saturate(145%); }
+.back-button { width: 36px; height: 36px; padding: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 11px; background: rgba(255,255,255,.055); color: var(--muted); display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.back-button:hover { color: var(--mint); border-color: rgba(93,224,186,.42); background: rgba(93,224,186,.1); }
+.copy-button { min-height: 30px; padding: 0 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.055); color: #cbd6e2; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 9px; font-weight: 700; }
+.copy-button:hover { color: var(--mint); border-color: rgba(93,224,186,.4); background: rgba(93,224,186,.1); }
+.context-status.nonwork { background: #68798a; }
+.auth-card.glass { background: linear-gradient(135deg, rgba(23,35,47,.72), rgba(11,18,27,.62)); }
+.auth-user-choice { margin-top: 22px; padding: 11px 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 11px; background: rgba(255,255,255,.045); color: var(--muted); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; }
+.auth-user-choice strong { color: var(--text); }.auth-switch { padding: 0; border: 0; background: transparent; color: var(--mint); cursor: pointer; font-size: 9px; text-align: right; }.auth-switch:hover { text-decoration: underline; }
+.pin-label-row { margin-top: 24px; display: flex; align-items: baseline; justify-content: space-between; }.auth-label-title { color: #dce6ef; font-size: 11px; font-weight: 700; }.pin-label-row small { color: var(--muted-2); font-size: 9px; }.pin-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-top: 10px; }.pin-box { width: 100%; height: 58px; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; background: rgba(255,255,255,.055); color: var(--mint); outline: 0; text-align: center; font: 700 22px 'Space Mono', monospace; box-shadow: inset 0 1px 0 rgba(255,255,255,.07); }.pin-box:focus { border-color: var(--mint); background: rgba(93,224,186,.1); box-shadow: 0 0 0 3px rgba(93,224,186,.08), inset 0 1px 0 rgba(255,255,255,.1); }
+@media (max-width: 600px) { .auth-card { padding: 27px 22px; }.auth-user-choice { align-items: flex-start; flex-direction: column; }.auth-switch { text-align: left; }.pin-box { height: 54px; }.back-button { width: 34px; height: 34px; } }
+
+.liquid-scene { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.liquid-scene-backdrop { position: absolute; inset: 0; background: radial-gradient(ellipse at 82% 20%, #174d4a 0%, transparent 45%), radial-gradient(ellipse at 10% 85%, #182d50 0%, transparent 42%), #080d15; }
+.liquid-orb { position: absolute; right: 12%; top: 5%; width: min(40vw, 440px); height: min(40vw, 440px); border-radius: 50%; background: rgba(149, 239, 216, .06); }
+#root { position: relative; z-index: 1; }
+.app-shell { background: rgba(7, 11, 16, .36); }
+.sidebar.glass { position: fixed; overflow-y: auto; }
+.calendar-context-menu.glass { position: fixed; overflow: visible; z-index: 80; background: linear-gradient(145deg, rgba(35, 52, 63, .97), rgba(16, 27, 38, .98)); border-color: rgba(193, 230, 225, .24); box-shadow: 0 24px 65px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .12); }
+.pin-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.auth-label small { color: var(--muted); line-height: 1.4; }
