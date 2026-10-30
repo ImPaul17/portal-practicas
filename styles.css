@@ -221,3 +221,37 @@ body { background: radial-gradient(circle at 15% 0%, rgba(108,168,255,.09), tran
 .calendar-context-menu.glass { position: fixed; overflow: visible; z-index: 80; background: linear-gradient(145deg, rgba(35, 52, 63, .97), rgba(16, 27, 38, .98)); border-color: rgba(193, 230, 225, .24); box-shadow: 0 24px 65px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .12); }
 .pin-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .auth-label small { color: var(--muted); line-height: 1.4; }
+
+/* A luminous, moving scene behind the glass surfaces. */
+.liquid-scene-backdrop {
+  background: radial-gradient(ellipse at 80% 15%, #164c53 0%, transparent 48%),
+    radial-gradient(ellipse at 12% 85%, #1b2854 0%, transparent 48%), #080d19;
+}
+.liquid-color { position: absolute; width: 65vmax; height: 65vmax; border-radius: 50%; opacity: .75; will-change: transform; }
+.liquid-color-mint { top: -37vmax; right: -12vmax; background: radial-gradient(circle, rgba(36, 225, 201, .48), rgba(29, 161, 170, .17) 34%, transparent 68%); animation: liquid-drift-one 22s ease-in-out infinite alternate; }
+.liquid-color-blue { left: -32vmax; bottom: -35vmax; background: radial-gradient(circle, rgba(76, 139, 255, .46), rgba(39, 84, 180, .16) 36%, transparent 68%); animation: liquid-drift-two 26s ease-in-out infinite alternate; }
+.liquid-color-violet { right: -30vmax; bottom: -41vmax; background: radial-gradient(circle, rgba(185, 95, 255, .35), rgba(110, 66, 200, .13) 37%, transparent 68%); animation: liquid-drift-three 19s ease-in-out infinite alternate; }
+.liquid-cursor-glow { position: absolute; left: 0; top: 0; width: min(75vw, 760px); height: min(75vw, 760px); border-radius: 50%; transform: translate3d(calc(var(--cursor-x, 65vw) - 50%), calc(var(--cursor-y, 30vh) - 50%), 0); background: radial-gradient(circle, rgba(116, 242, 233, .23), rgba(100, 147, 255, .12) 30%, transparent 68%); transition: transform .25s ease-out; will-change: transform; }
+@keyframes liquid-drift-one { from { transform: translate3d(-5%, 0, 0) scale(1); } to { transform: translate3d(-24%, 19%, 0) scale(1.18); } }
+@keyframes liquid-drift-two { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(25%, -25%, 0) scale(1.16); } }
+@keyframes liquid-drift-three { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-35%, -30%, 0) scale(1.2); } }
+.liquid-orb { width: min(48vw, 540px); height: min(48vw, 540px); right: 7%; top: 3%; background: rgba(149, 239, 216, .08); }
+.app-shell { background: rgba(7, 11, 16, .19); }
+.auth-gate { background: rgba(7, 11, 16, .12); }
+.sidebar.glass { background: linear-gradient(180deg, rgba(13, 23, 32, .75), rgba(8, 16, 25, .70)); }
+.main-shell.glass { background: linear-gradient(130deg, rgba(10, 20, 30, .23), rgba(12, 20, 32, .13)); }
+.glass, .hero-card, .panel, .stat-card, .calendar-panel, .editor-card, .aside-card, .summary-hero, .settings-card, .records-table, .open-day-card {
+  border-color: rgba(196, 237, 244, .2);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .23), inset 0 1px 0 rgba(255, 255, 255, .23), inset 1px 0 0 rgba(104, 235, 242, .16), inset -1px 0 0 rgba(216, 145, 255, .14);
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+}
+.hero-card, .panel, .stat-card, .calendar-panel, .editor-card, .aside-card, .summary-hero, .settings-card, .records-table, .open-day-card {
+  background: linear-gradient(130deg, rgba(204, 246, 255, .14), rgba(29, 49, 65, .35) 45%, rgba(150, 116, 211, .11));
+}
+.auth-card.glass { background: linear-gradient(135deg, rgba(65, 99, 111, .54), rgba(18, 30, 44, .76) 55%, rgba(74, 54, 102, .5)); }
+@media (max-width: 600px) { .liquid-orb { width: 70vw; height: 70vw; right: -15%; top: 5%; } }
+@media (prefers-reduced-motion: reduce) {
+  .liquid-color { animation: none; will-change: auto; }
+  .liquid-cursor-glow { transition: none; will-change: auto; }
+}
