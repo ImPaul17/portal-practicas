@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PhoneGest → Séneca",
   "description": "Traspasa registros del Portal de Prácticas al formulario de Séneca con revisión manual.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "permissions": [
     "storage",
     "activeTab",
@@ -23,6 +23,7 @@
   "content_scripts": [
     {
       "matches": [
+        "https://impaul17.github.io/portal-practicas",
         "https://impaul17.github.io/portal-practicas/*"
       ],
       "js": [

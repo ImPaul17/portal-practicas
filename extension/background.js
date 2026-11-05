@@ -4,7 +4,10 @@ const CODES = new Set(['AF8','AF9','AF10','AF11','AF12','AF13']);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Solo se aceptan transferencias desde el portal autorizado.
-  if (!sender.tab || !sender.url?.startsWith(PORTAL_ORIGIN + '/portal-practicas/')) return;
+  let senderUrl;
+  try { senderUrl = new URL(sender.url); } catch { return; }
+  if (!sender.tab || senderUrl.origin !== PORTAL_ORIGIN ||
+      !(senderUrl.pathname === '/portal-practicas' || senderUrl.pathname.startsWith('/portal-practicas/'))) return;
   if (message?.type === 'PHONEGEST_PING') { sendResponse({ok:true}); return; }
   if (message?.type !== 'PHONEGEST_TRANSFER') return;
 

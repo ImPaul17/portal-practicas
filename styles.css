@@ -255,3 +255,18 @@ body { background: radial-gradient(circle at 15% 0%, rgba(108,168,255,.09), tran
 @media (prefers-reduced-motion: reduce) {
   .liquid-color { animation: none; will-change: auto; }
 }
+
+/* Scrollbars match the translucent surfaces while remaining easy to grab. */
+* { scrollbar-width: thin; scrollbar-color: rgba(124, 204, 196, .55) rgba(9, 19, 30, .55); }
+*::-webkit-scrollbar { width: 11px; height: 11px; }
+*::-webkit-scrollbar-track { background: rgba(9, 19, 30, .55); }
+*::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: linear-gradient(180deg, rgba(124, 220, 206, .72), rgba(114, 155, 215, .6)) padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(148, 242, 222, .95), rgba(146, 175, 236, .85)) padding-box; }
+*::-webkit-scrollbar-corner { background: rgba(9, 19, 30, .55); }
+.editor-footer { gap: 12px; flex-wrap: wrap; }
+.editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.editor-actions .button { min-height: 32px; font-size: 9px; }
+@media (max-width: 600px) {
+  .editor-actions { width: 100%; justify-content: flex-start; }
+  .editor-actions button { flex: 1 1 auto; }
+}

@@ -8,12 +8,12 @@ Extensión de navegador para transferir un día de prácticas desde el portal pe
 2. En Chrome abre chrome://extensions/ (o en Edge, edge://extensions/).
 3. Activa **Modo de desarrollador**.
 4. Pulsa **Cargar descomprimida** y selecciona la carpeta extension del proyecto.
-5. Si actualizas los archivos, pulsa **Actualizar** en la página de extensiones.
+5. Si actualizas los archivos, pulsa **Actualizar** en la página de extensiones y después recarga la pestaña del portal. La web publicada no actualiza por sí sola la extensión instalada en tu navegador.
 
 ## Uso
 
 1. Entra en https://impaul17.github.io/portal-practicas/ con tu usuario y PIN.
-2. Abre un día que tenga anotaciones iPasen y al menos una AF. Configura las horas de inicio y fin (puedes definir horarios predeterminados desde **Ajustes**), guarda el día y pulsa **Enviar a Séneca**.
+2. Abre un día con contenido en el registro universal y al menos una AF. Configura las horas de inicio y fin (puedes definir horarios predeterminados desde **Ajustes**) y pulsa **Enviar a Séneca**. El portal guarda los cambios automáticamente.
 3. Entra **tú** en https://seneca.juntadeandalucia.es/ e inicia sesión normalmente.
 4. Ve a **Detalle de actividad diaria del alumnado**, elige la **misma fecha** que enviaste.
 5. Pulsa el icono de la extensión **PhoneGest → Séneca** y después **Rellenar formulario abierto**.
